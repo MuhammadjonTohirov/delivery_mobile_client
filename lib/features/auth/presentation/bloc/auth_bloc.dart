@@ -29,23 +29,32 @@ class AuthLoginRequested extends AuthEvent {
 class AuthRegisterRequested extends AuthEvent {
   final String email;
   final String password;
-  final String firstName;
-  final String lastName;
-  final String? phoneNumber;
+  final String fullName;
+  final String? phone;
 
   const AuthRegisterRequested({
     required this.email,
     required this.password,
-    required this.firstName,
-    required this.lastName,
-    this.phoneNumber,
+    required this.fullName,
+    this.phone,
   });
 
   @override
-  List<Object> get props => [email, password, firstName, lastName];
+  List<Object> get props => [email, password, fullName];
 }
 
 class AuthLogoutRequested extends AuthEvent {}
+
+class AuthForgotPasswordRequested extends AuthEvent {
+  final String email;
+
+  const AuthForgotPasswordRequested({
+    required this.email,
+  });
+
+  @override
+  List<Object> get props => [email];
+}
 
 // States
 abstract class AuthState extends Equatable {
@@ -79,6 +88,24 @@ class AuthError extends AuthState {
   List<Object> get props => [message];
 }
 
+class AuthRegistrationSuccess extends AuthState {
+  final String message;
+
+  const AuthRegistrationSuccess({required this.message});
+
+  @override
+  List<Object> get props => [message];
+}
+
+class AuthForgotPasswordSuccess extends AuthState {
+  final String message;
+
+  const AuthForgotPasswordSuccess({required this.message});
+
+  @override
+  List<Object> get props => [message];
+}
+
 // Bloc
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final ApiService apiService;
@@ -88,6 +115,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLoginRequested>(_onAuthLoginRequested);
     on<AuthRegisterRequested>(_onAuthRegisterRequested);
     on<AuthLogoutRequested>(_onAuthLogoutRequested);
+    on<AuthForgotPasswordRequested>(_onAuthForgotPasswordRequested);
   }
 
   Future<void> _onAuthCheckRequested(
@@ -168,33 +196,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final response = await apiService.register(
         email: event.email,
         password: event.password,
-        firstName: event.firstName,
-        lastName: event.lastName,
-        phoneNumber: event.phoneNumber,
+        fullName: event.fullName,
+        phone: event.phone,
       );
       
       if (response.success && response.data != null) {
-        final data = response.data!;
-        
-        // Store token and user data
-        if (data.containsKey('access_token') || data.containsKey('token') || data.containsKey('access')) {
-          final token = data['access_token'] ?? data['token'] ?? data['access'];
-          await StorageService.setAuthToken(token);
-        }
-        
-        if (data.containsKey('user')) {
-          await StorageService.setUserData(data['user']);
-          emit(AuthAuthenticated(user: data['user']));
-        } else {
-          // Get user profile after registration
-          final profileResponse = await apiService.getUserProfile();
-          if (profileResponse.success && profileResponse.data != null) {
-            await StorageService.setUserData(profileResponse.data!);
-            emit(AuthAuthenticated(user: profileResponse.data!));
-          } else {
-            emit(const AuthError(message: 'Failed to get user profile'));
-          }
-        }
+        // Registration successful - emit success state instead of auto-login
+        emit(const AuthRegistrationSuccess(
+          message: 'Registration successful! Please login with your credentials.',
+        ));
       } else {
         emit(AuthError(message: response.error ?? 'Registration failed'));
       }
@@ -216,6 +226,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // Even if logout fails, clear local data
       await StorageService.logout();
       emit(AuthUnauthenticated());
+    }
+  }
+
+  Future<void> _onAuthForgotPasswordRequested(
+    AuthForgotPasswordRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+
+    try {
+      final response = await apiService.forgotPassword(event.email);
+      
+      if (response.success && response.data != null) {
+        final message = response.data!['message'] ?? 
+            'If your email is registered, you will receive password reset instructions.';
+        emit(AuthForgotPasswordSuccess(message: message));
+      } else {
+        emit(AuthError(message: response.error ?? 'Failed to send reset instructions'));
+      }
+    } catch (e) {
+      emit(AuthError(message: 'An unexpected error occurred: ${e.toString()}'));
     }
   }
 }

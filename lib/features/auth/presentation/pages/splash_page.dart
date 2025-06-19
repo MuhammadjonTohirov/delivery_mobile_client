@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/services/language_service.dart';
 import '../bloc/auth_bloc.dart';
 
 class SplashPage extends StatefulWidget {
@@ -49,9 +50,22 @@ class _SplashPageState extends State<SplashPage>
   }
 
   void _checkAuthStatus() {
-    Future.delayed(const Duration(milliseconds: 2500), () {
+    Future.delayed(const Duration(milliseconds: 2500), () async {
       if (mounted) {
-        context.read<AuthBloc>().add(AuthCheckRequested());
+        // Check if language has been set
+        final hasLanguage = await LanguageService.hasLanguageBeenSet();
+        
+        if (!hasLanguage) {
+          // Navigate to language selection if no language is set
+          AppRouter.pushAndRemoveUntil(
+            context, 
+            AppRouter.languageSelection,
+            arguments: {'isInitialSetup': true},
+          );
+        } else {
+          // Check auth status if language is already set
+          context.read<AuthBloc>().add(AuthCheckRequested());
+        }
       }
     });
   }

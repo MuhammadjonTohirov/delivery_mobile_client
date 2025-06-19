@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/services/language_service.dart';
+import '../../../../core/blocs/language_cubit.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../bloc/auth_bloc.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/auth_button.dart';
@@ -14,19 +17,31 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
-  final _firstNameController = TextEditingController();
-  final _lastNameController = TextEditingController();
+  final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  String _currentLanguage = 'en';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentLanguage();
+  }
+
+  Future<void> _loadCurrentLanguage() async {
+    final language = await LanguageService.getLanguage();
+    setState(() {
+      _currentLanguage = language;
+    });
+  }
 
   @override
   void dispose() {
-    _firstNameController.dispose();
-    _lastNameController.dispose();
+    _fullNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
@@ -40,9 +55,8 @@ class _RegisterPageState extends State<RegisterPage> {
         AuthRegisterRequested(
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          firstName: _firstNameController.text.trim(),
-          lastName: _lastNameController.text.trim(),
-          phoneNumber: _phoneController.text.trim().isNotEmpty 
+          fullName: _fullNameController.text.trim(),
+          phone: _phoneController.text.trim().isNotEmpty 
               ? _phoneController.text.trim() 
               : null,
         ),
@@ -52,12 +66,109 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          // Language Selection Button
+          Container(
+            margin: const EdgeInsets.only(right: 16, top: 8),
+            child: PopupMenuButton<String>(
+              icon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    LanguageService.getLanguageFlag(_currentLanguage),
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _currentLanguage.toUpperCase(),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.keyboard_arrow_down,
+                    size: 16,
+                    color: Theme.of(context).textTheme.bodySmall?.color,
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              onSelected: (String languageCode) async {
+                context.read<LanguageCubit>().changeLanguage(languageCode);
+                setState(() {
+                  _currentLanguage = languageCode;
+                });
+              },
+              itemBuilder: (BuildContext context) => [
+                PopupMenuItem<String>(
+                  value: 'en',
+                  child: Row(
+                    children: [
+                      const Text('🇺🇸', style: TextStyle(fontSize: 20)),
+                      const SizedBox(width: 12),
+                      Text(l10n.english),
+                      if (_currentLanguage == 'en')...[
+                        const Spacer(),
+                        Icon(Icons.check, color: Theme.of(context).primaryColor, size: 18),
+                      ],
+                    ],
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'ru',
+                  child: Row(
+                    children: [
+                      const Text('🇷🇺', style: TextStyle(fontSize: 20)),
+                      const SizedBox(width: 12),
+                      Text(l10n.russian),
+                      if (_currentLanguage == 'ru')...[
+                        const Spacer(),
+                        Icon(Icons.check, color: Theme.of(context).primaryColor, size: 18),
+                      ],
+                    ],
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'uz',
+                  child: Row(
+                    children: [
+                      const Text('🇺🇿', style: TextStyle(fontSize: 20)),
+                      const SizedBox(width: 12),
+                      Text(l10n.uzbek),
+                      if (_currentLanguage == 'uz')...[
+                        const Spacer(),
+                        Icon(Icons.check, color: Theme.of(context).primaryColor, size: 18),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
-          if (state is AuthAuthenticated) {
-            AppRouter.pushAndRemoveUntil(context, AppRouter.home);
+          if (state is AuthRegistrationSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+            // Navigate back to login after showing success message
+            Future.delayed(const Duration(seconds: 1), () {
+              AppRouter.pushReplacement(context, AppRouter.login);
+            });
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -96,14 +207,14 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         const SizedBox(height: 24),
                         Text(
-                          'Create Account',
+                          l10n.createAccount,
                           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Join us for fast delivery',
+                          l10n.registerSubtitle,
                           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             color: Theme.of(context).textTheme.bodySmall?.color,
                           ),
@@ -114,31 +225,15 @@ class _RegisterPageState extends State<RegisterPage> {
                   
                   const SizedBox(height: 32),
                   
-                  // First Name Field
+                  // Full Name Field
                   AuthTextField(
-                    controller: _firstNameController,
-                    label: 'First Name',
-                    hintText: 'Enter your first name',
+                    controller: _fullNameController,
+                    label: l10n.fullName,
+                    hintText: l10n.enterFullName,
                     prefixIcon: Icons.person_outlined,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your first name';
-                      }
-                      return null;
-                    },
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Last Name Field
-                  AuthTextField(
-                    controller: _lastNameController,
-                    label: 'Last Name',
-                    hintText: 'Enter your last name',
-                    prefixIcon: Icons.person_outlined,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your last name';
+                        return l10n.fullNameRequired;
                       }
                       return null;
                     },
@@ -149,16 +244,16 @@ class _RegisterPageState extends State<RegisterPage> {
                   // Email Field
                   AuthTextField(
                     controller: _emailController,
-                    label: 'Email',
-                    hintText: 'Enter your email',
+                    label: l10n.email,
+                    hintText: l10n.enterEmail,
                     keyboardType: TextInputType.emailAddress,
                     prefixIcon: Icons.email_outlined,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
+                        return l10n.emailRequired;
                       }
                       if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                        return 'Please enter a valid email';
+                        return l10n.emailInvalid;
                       }
                       return null;
                     },
@@ -169,8 +264,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   // Phone Field
                   AuthTextField(
                     controller: _phoneController,
-                    label: 'Phone Number (Optional)',
-                    hintText: 'Enter your phone number',
+                    label: l10n.phoneOptional,
+                    hintText: l10n.enterPhoneNumber,
                     keyboardType: TextInputType.phone,
                     prefixIcon: Icons.phone_outlined,
                   ),
@@ -180,8 +275,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   // Password Field
                   AuthTextField(
                     controller: _passwordController,
-                    label: 'Password',
-                    hintText: 'Enter your password',
+                    label: l10n.password,
+                    hintText: l10n.enterPassword,
                     obscureText: _obscurePassword,
                     prefixIcon: Icons.lock_outlined,
                     suffixIcon: IconButton(
@@ -196,7 +291,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
+                        return l10n.passwordRequired;
                       }
                       if (value.length < 6) {
                         return 'Password must be at least 6 characters';
@@ -210,8 +305,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   // Confirm Password Field
                   AuthTextField(
                     controller: _confirmPasswordController,
-                    label: 'Confirm Password',
-                    hintText: 'Confirm your password',
+                    label: l10n.confirmPassword,
+                    hintText: l10n.confirmYourPassword,
                     obscureText: _obscureConfirmPassword,
                     prefixIcon: Icons.lock_outlined,
                     suffixIcon: IconButton(
@@ -226,7 +321,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please confirm your password';
+                        return l10n.passwordRequired;
                       }
                       if (value != _passwordController.text) {
                         return 'Passwords do not match';
@@ -241,7 +336,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   BlocBuilder<AuthBloc, AuthState>(
                     builder: (context, state) {
                       return AuthButton(
-                        text: 'Create Account',
+                        text: l10n.createAccount,
                         onPressed: _register,
                         isLoading: state is AuthLoading,
                       );
@@ -264,14 +359,14 @@ class _RegisterPageState extends State<RegisterPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Already have an account? ',
+                        l10n.alreadyHaveAccount,
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       TextButton(
                         onPressed: () {
                           AppRouter.pushReplacement(context, AppRouter.login);
                         },
-                        child: const Text('Sign In'),
+                        child: Text(l10n.signIn),
                       ),
                     ],
                   ),

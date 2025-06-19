@@ -2,16 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/services/api_service.dart';
 import 'core/services/storage_service.dart';
 import 'core/services/location_service.dart';
+import 'core/services/language_service.dart';
+import 'core/blocs/language_cubit.dart';
+import 'l10n/app_localizations.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/home/presentation/bloc/home_bloc.dart';
 import 'features/cart/presentation/bloc/cart_bloc.dart';
 import 'features/orders/presentation/bloc/orders_bloc.dart';
+import 'features/search/presentation/bloc/search_bloc.dart';
 import 'features/auth/presentation/pages/splash_page.dart';
 import 'core/router/app_router.dart';
 
@@ -46,6 +51,9 @@ class DeliveryCustomerApp extends StatelessWidget {
       ],
       child: MultiBlocProvider(
         providers: [
+          BlocProvider<LanguageCubit>(
+            create: (context) => LanguageCubit(),
+          ),
           BlocProvider<AuthBloc>(
             create: (context) => AuthBloc(
               apiService: context.read<ApiService>(),
@@ -65,15 +73,27 @@ class DeliveryCustomerApp extends StatelessWidget {
               apiService: context.read<ApiService>(),
             ),
           ),
+          BlocProvider<SearchBloc>(
+            create: (context) => SearchBloc(
+              apiService: context.read<ApiService>(),
+            ),
+          ),
         ],
-        child: MaterialApp(
-          title: AppConstants.appName,
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: ThemeMode.system,
-          onGenerateRoute: AppRouter.generateRoute,
-          home: const SplashPage(),
+        child: BlocBuilder<LanguageCubit, Locale>(
+          builder: (context, locale) {
+            return MaterialApp(
+              title: AppConstants.appName,
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
+              themeMode: ThemeMode.system,
+              locale: locale,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              onGenerateRoute: AppRouter.generateRoute,
+              home: const SplashPage(),
+            );
+          },
         ),
       ),
     );

@@ -5,9 +5,12 @@ class AppConstants {
   // API Endpoints
   static const String loginEndpoint = '/auth/token/';
   static const String registerEndpoint = '/auth/register/';
+  static const String forgotPasswordEndpoint = '/auth/forgot-password/';
   static const String restaurantsEndpoint = '/restaurants/list/';
+  static const String categoriesEndpoint = '/restaurants/categories/';
   static const String ordersEndpoint = '/orders/';
   static const String menuEndpoint = '/menus/';
+  static const String menuItemsEndpoint = '/restaurants/menu-items/';
   static const String searchEndpoint = '/search/';
   static const String promotionsEndpoint = '/promotions/';
   static const String reviewsEndpoint = '/restaurants/reviews/';

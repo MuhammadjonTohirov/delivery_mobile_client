@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
+import '../../features/auth/presentation/pages/forgot_password_page.dart';
+import '../../features/language/presentation/pages/language_selection_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/home/presentation/pages/restaurant_details_page.dart';
 import '../../features/cart/presentation/pages/cart_page.dart';
@@ -15,8 +17,10 @@ import '../../features/profile/presentation/pages/settings_page.dart';
 
 class AppRouter {
   static const String splash = '/';
+  static const String languageSelection = '/language-selection';
   static const String login = '/login';
   static const String register = '/register';
+  static const String forgotPassword = '/forgot-password';
   static const String home = '/home';
   static const String restaurantDetails = '/restaurant-details';
   static const String cart = '/cart';
@@ -36,6 +40,15 @@ class AppRouter {
           settings: settings,
         );
 
+      case languageSelection:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+          builder: (_) => LanguageSelectionPage(
+            isInitialSetup: args?['isInitialSetup'] ?? false,
+          ),
+          settings: settings,
+        );
+
       case login:
         return MaterialPageRoute(
           builder: (_) => const LoginPage(),
@@ -45,6 +58,12 @@ class AppRouter {
       case register:
         return MaterialPageRoute(
           builder: (_) => const RegisterPage(),
+          settings: settings,
+        );
+
+      case forgotPassword:
+        return MaterialPageRoute(
+          builder: (_) => const ForgotPasswordPage(),
           settings: settings,
         );
 

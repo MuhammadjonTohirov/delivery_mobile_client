@@ -8,18 +8,16 @@ import '../bloc/auth_bloc.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/auth_button.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class ForgotPasswordPage extends StatefulWidget {
+  const ForgotPasswordPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
   String _currentLanguage = 'en';
 
   @override
@@ -38,16 +36,14 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void dispose() {
     _emailController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
-  void _login() {
+  void _requestPasswordReset() {
     if (_formKey.currentState?.validate() ?? false) {
       context.read<AuthBloc>().add(
-        AuthLoginRequested(
+        AuthForgotPasswordRequested(
           email: _emailController.text.trim(),
-          password: _passwordController.text,
         ),
       );
     }
@@ -56,11 +52,18 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            AppRouter.pop(context);
+          },
+        ),
         actions: [
           // Language Selection Button
           Container(
@@ -100,10 +103,10 @@ class _LoginPageState extends State<LoginPage> {
                   value: 'en',
                   child: Row(
                     children: [
-                      const Text('🇺🇸', style: TextStyle(fontSize: 20)),
+                      Text('🇺🇸', style: const TextStyle(fontSize: 20)),
                       const SizedBox(width: 12),
                       Text(l10n.english),
-                      if (_currentLanguage == 'en')...[
+                      if (_currentLanguage == 'en') ...[
                         const Spacer(),
                         Icon(Icons.check, color: Theme.of(context).primaryColor, size: 18),
                       ],
@@ -114,7 +117,7 @@ class _LoginPageState extends State<LoginPage> {
                   value: 'ru',
                   child: Row(
                     children: [
-                      const Text('🇷🇺', style: TextStyle(fontSize: 20)),
+                      Text('🇷🇺', style: const TextStyle(fontSize: 20)),
                       const SizedBox(width: 12),
                       Text(l10n.russian),
                       if (_currentLanguage == 'ru')...[
@@ -128,7 +131,7 @@ class _LoginPageState extends State<LoginPage> {
                   value: 'uz',
                   child: Row(
                     children: [
-                      const Text('🇺🇿', style: TextStyle(fontSize: 20)),
+                      Text('🇺🇿', style: const TextStyle(fontSize: 20)),
                       const SizedBox(width: 12),
                       Text(l10n.uzbek),
                       if (_currentLanguage == 'uz')...[
@@ -145,8 +148,18 @@ class _LoginPageState extends State<LoginPage> {
       ),
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
-          if (state is AuthAuthenticated) {
-            AppRouter.pushAndRemoveUntil(context, AppRouter.home);
+          if (state is AuthForgotPasswordSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+            // Navigate back to login after showing success message
+            Future.delayed(const Duration(seconds: 2), () {
+              AppRouter.pushReplacement(context, AppRouter.login);
+            });
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -164,9 +177,9 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 60),
+                  const SizedBox(height: 40),
                   
-                  // Logo and Title
+                  // Icon and Title
                   Center(
                     child: Column(
                       children: [
@@ -178,24 +191,25 @@ class _LoginPageState extends State<LoginPage> {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Icon(
-                            Icons.delivery_dining,
+                            Icons.lock_reset,
                             size: 40,
                             color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 24),
                         Text(
-                          l10n.loginTitle,
+                          l10n.forgotPasswordTitle,
                           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          l10n.loginSubtitle,
+                          l10n.forgotPasswordSubtitle,
                           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             color: Theme.of(context).textTheme.bodySmall?.color,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
@@ -206,7 +220,7 @@ class _LoginPageState extends State<LoginPage> {
                   // Email Field
                   AuthTextField(
                     controller: _emailController,
-                    label: 'Email',
+                    label: l10n.email,
                     hintText: l10n.enterEmail,
                     keyboardType: TextInputType.emailAddress,
                     prefixIcon: Icons.email_outlined,
@@ -214,120 +228,41 @@ class _LoginPageState extends State<LoginPage> {
                       if (value == null || value.isEmpty) {
                         return l10n.emailRequired;
                       }
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                        return l10n.emailInvalid;
-                      }
+                      // if (!RegExp(r'^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$').hasMatch(value)) {
+                      //   return 'Please enter a valid email';
+                      // }
                       return null;
                     },
                   ),
                   
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 32),
                   
-                  // Password Field
-                  AuthTextField(
-                    controller: _passwordController,
-                    label: 'Password',
-                    hintText: l10n.enterPassword,
-                    obscureText: _obscurePassword,
-                    prefixIcon: Icons.lock_outlined,
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return l10n.passwordRequired;
-                      }
-                      if (value.length < 3) {
-                        return 'Password must be at least 6 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                  
-                  const SizedBox(height: 12),
-                  
-                  // Forgot Password
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        AppRouter.push(context, AppRouter.forgotPassword);
-                      },
-                      child: const Text('Forgot Password?'),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Login Button
+                  // Reset Password Button
                   BlocBuilder<AuthBloc, AuthState>(
                     builder: (context, state) {
                       return AuthButton(
-                        text: l10n.signIn,
-                        onPressed: _login,
+                        text: l10n.forgotPasswordButton,
+                        onPressed: _requestPasswordReset,
                         isLoading: state is AuthLoading,
                       );
                     },
                   ),
                   
-                  const SizedBox(height: 24),
-                  
-                  // Divider
-                  Row(
-                    children: [
-                      const Expanded(child: Divider()),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'OR',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                      const Expanded(child: Divider()),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Social Login Buttons
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      // TODO: Implement Google Sign In
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Google Sign In coming soon!'),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.g_mobiledata, size: 24),
-                    label: const Text('Continue with Google'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                  
                   const SizedBox(height: 32),
                   
-                  // Sign Up Link
+                  // Back to Login Link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        l10n.dontHaveAccount,
+                        l10n.rememberPassword,
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       TextButton(
                         onPressed: () {
-                          AppRouter.pushReplacement(context, AppRouter.register);
+                          AppRouter.pushReplacement(context, AppRouter.login);
                         },
-                        child: Text(l10n.signUp),
+                        child: Text(l10n.signIn),
                       ),
                     ],
                   ),
