@@ -8,7 +8,6 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/home/presentation/pages/restaurant_details_page.dart';
 import '../../features/cart/presentation/pages/cart_page.dart';
 import '../../features/cart/presentation/pages/checkout_page.dart';
-import '../../features/orders/presentation/pages/orders_page.dart';
 import '../../features/orders/presentation/pages/order_details_page.dart';
 import '../../features/orders/presentation/pages/order_tracking_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -75,7 +74,7 @@ class AppRouter {
 
       case restaurantDetails:
         final args = settings.arguments as Map<String, dynamic>?;
-        final restaurantId = args?['restaurantId'] as int?;
+        final restaurantId = args?['restaurantId'] as String?;
         if (restaurantId == null) {
           return _errorRoute('Restaurant ID is required');
         }
@@ -101,7 +100,7 @@ class AppRouter {
 
       case orderDetails:
         final args = settings.arguments as Map<String, dynamic>?;
-        final orderId = args?['orderId'] as int?;
+        final orderId = args?['orderId'] as String?;
         if (orderId == null) {
           return _errorRoute('Order ID is required');
         }
@@ -112,7 +111,7 @@ class AppRouter {
 
       case orderTracking:
         final args = settings.arguments as Map<String, dynamic>?;
-        final orderId = args?['orderId'] as int?;
+        final orderId = args?['orderId'] as String?;
         if (orderId == null) {
           return _errorRoute('Order ID is required');
         }

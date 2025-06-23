@@ -532,7 +532,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         items: cartState.items,
         deliveryAddress: {
           'address': _addressController.text.trim(),
-          'coordinates': {'lat': 41.2995, 'lng': 69.2401}, // Mock coordinates
+          'coordinates': const {'lat': 41.2995, 'lng': 69.2401}, // Mock coordinates
         },
         notes: _notesController.text.trim().isNotEmpty 
             ? _notesController.text.trim() 

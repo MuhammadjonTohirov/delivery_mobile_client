@@ -3,7 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../search/presentation/pages/search_page.dart';
+import '../../../orders/presentation/pages/orders_page.dart';
+import '../../../profile/presentation/pages/profile_page.dart';
 import '../bloc/home_bloc.dart';
+import 'category_results_page.dart';
+import 'restaurant_details_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -18,8 +22,8 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = [
     const HomeTab(),
     const SearchPage(),
-    const OrdersTab(),
-    const ProfileTab(),
+    const OrdersPage(),
+    const ProfilePage(),
   ];
 
   @override
@@ -214,7 +218,7 @@ class SearchBarWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(12),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -289,9 +293,12 @@ class CategoriesSection extends StatelessWidget {
                 
                 return GestureDetector(
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('$categoryName category selected'),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => CategoryResultsPage(
+                          categoryId: category['id']?.toString(),
+                          categoryName: categoryName,
+                        ),
                       ),
                     );
                   },
@@ -301,7 +308,7 @@ class CategoriesSection extends StatelessWidget {
                         width: 60,
                         height: 60,
                         decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor.withOpacity(0.1),
+                          color: Theme.of(context).primaryColor.withAlpha(25),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Icon(
@@ -368,8 +375,13 @@ class FeaturedRestaurantsSection extends StatelessWidget {
                   
                   return GestureDetector(
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('$name selected')),
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => RestaurantDetailsPage(
+                            restaurantId: restaurant['id'] ?? (index + 1).toString(),
+                            restaurantData: restaurant,
+                          ),
+                        ),
                       );
                     },
                     child: Container(
@@ -380,7 +392,7 @@ class FeaturedRestaurantsSection extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withAlpha(12),
                             blurRadius: 10,
                             offset: const Offset(0, 2),
                           ),
@@ -396,7 +408,7 @@ class FeaturedRestaurantsSection extends StatelessWidget {
                               Container(
                                 height: 120,
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                                  color: Theme.of(context).primaryColor.withAlpha(25),
                                   borderRadius: const BorderRadius.only(
                                     topLeft: Radius.circular(16),
                                     topRight: Radius.circular(16),
@@ -445,7 +457,7 @@ class FeaturedRestaurantsSection extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(8),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
+                                          color: Colors.black.withAlpha(25),
                                           blurRadius: 4,
                                           offset: const Offset(0, 2),
                                         ),
@@ -686,8 +698,13 @@ class RestaurantListCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$name selected')),
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => RestaurantDetailsPage(
+              restaurantId: restaurant['id'] ?? 1,
+              restaurantData: restaurant,
+            ),
+          ),
         );
       },
       child: Container(
@@ -696,7 +713,7 @@ class RestaurantListCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withAlpha(10),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -709,7 +726,7 @@ class RestaurantListCard extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                color: Theme.of(context).primaryColor.withAlpha(25),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(12),
                   bottomLeft: Radius.circular(12),
@@ -761,7 +778,7 @@ class RestaurantListCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withAlpha(25),
                               blurRadius: 2,
                               offset: const Offset(0, 1),
                             ),

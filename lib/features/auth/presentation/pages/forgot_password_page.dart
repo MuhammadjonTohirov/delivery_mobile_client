@@ -103,7 +103,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   value: 'en',
                   child: Row(
                     children: [
-                      Text('🇺🇸', style: const TextStyle(fontSize: 20)),
+                      const Text('🇺🇸', style: TextStyle(fontSize: 20)),
                       const SizedBox(width: 12),
                       Text(l10n.english),
                       if (_currentLanguage == 'en') ...[
@@ -117,7 +117,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   value: 'ru',
                   child: Row(
                     children: [
-                      Text('🇷🇺', style: const TextStyle(fontSize: 20)),
+                      const Text('🇷🇺', style: TextStyle(fontSize: 20)),
                       const SizedBox(width: 12),
                       Text(l10n.russian),
                       if (_currentLanguage == 'ru')...[
@@ -131,7 +131,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   value: 'uz',
                   child: Row(
                     children: [
-                      Text('🇺🇿', style: const TextStyle(fontSize: 20)),
+                      const Text('🇺🇿', style: TextStyle(fontSize: 20)),
                       const SizedBox(width: 12),
                       Text(l10n.uzbek),
                       if (_currentLanguage == 'uz')...[

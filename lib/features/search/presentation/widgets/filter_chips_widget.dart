@@ -21,7 +21,7 @@ class FilterChipsWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     
-    return Container(
+    return SizedBox(
       height: 50,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -51,7 +51,7 @@ class FilterChipsWidget extends StatelessWidget {
                   onTap: () => onCategorySelected(categoryId),
                 ),
               );
-            }).toList(),
+            }),
             
             const SizedBox(width: 16),
             

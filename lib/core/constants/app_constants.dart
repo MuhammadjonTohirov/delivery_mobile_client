@@ -9,11 +9,13 @@ class AppConstants {
   static const String restaurantsEndpoint = '/restaurants/list/';
   static const String categoriesEndpoint = '/restaurants/categories/';
   static const String ordersEndpoint = '/orders/';
-  static const String menuEndpoint = '/menus/';
+  static const String menuEndpoint = '/restaurants/menus/'; // Note: Use restaurantsEndpoint + restaurantId + '/menu/' for specific restaurant menus
   static const String menuItemsEndpoint = '/restaurants/menu-items/';
   static const String searchEndpoint = '/search/';
   static const String promotionsEndpoint = '/promotions/';
   static const String reviewsEndpoint = '/restaurants/reviews/';
+  static const String cartEndpoint = '/cart/';
+  static const String profileEndpoint = '/auth/profile/';
   
   // Storage Keys
   static const String tokenKey = 'auth_token';

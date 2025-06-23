@@ -45,7 +45,7 @@ class SearchSuggestionsWidget extends StatelessWidget {
                 icon: Icons.history,
                 onTap: () => onSearchTap(search),
               );
-            }).toList(),
+            }),
             const SizedBox(height: 24),
           ],
           
@@ -74,7 +74,7 @@ class SearchSuggestionsWidget extends StatelessWidget {
               icon: Icons.search,
               onTap: () => onSearchTap(search),
             );
-          }).toList(),
+          }),
         ],
       ),
     );

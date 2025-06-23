@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import '../constants/app_constants.dart';
 import 'storage_service.dart';
 
@@ -110,9 +111,72 @@ class ApiService {
 
   Future<ApiResponse<Map<String, dynamic>>> getUserProfile() async {
     try {
-      final response = await _dio.get('/auth/profile/');
+      final response = await _dio.get(AppConstants.profileEndpoint);
       return ApiResponse.success(response.data);
     } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> updateProfile({
+    String? fullName,
+    String? phone,
+    String? email,
+  }) async {
+    try {
+      final data = <String, dynamic>{};
+      if (fullName != null) data['full_name'] = fullName;
+      if (phone != null) data['phone'] = phone;
+      if (email != null) data['email'] = email;
+      
+      final response = await _dio.patch(
+        AppConstants.profileEndpoint,
+        data: data,
+      );
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> updateProfileImage({
+    required XFile imageFile,
+  }) async {
+    try {
+      final fileName = imageFile.name.isNotEmpty ? imageFile.name : 'profile_image.jpg';
+      
+      if (kDebugMode) {
+        print('Uploading profile image: ${imageFile.path}');
+        print('File name: $fileName');
+        print('File size: ${await imageFile.length()} bytes');
+      }
+      
+      final formData = FormData.fromMap({
+        'avatar': await MultipartFile.fromFile(
+          imageFile.path,
+          filename: fileName,
+        ),
+      });
+
+      final response = await _dio.patch(
+        AppConstants.profileEndpoint,
+        data: formData,
+        options: Options(
+          contentType: 'multipart/form-data',
+        ),
+      );
+      
+      if (kDebugMode) {
+        print('Profile image upload response: ${response.data}');
+      }
+      
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('Profile image upload error: ${e.message}');
+        print('Response data: ${e.response?.data}');
+        print('Status code: ${e.response?.statusCode}');
+      }
       return ApiResponse.error(_handleError(e));
     }
   }
@@ -213,7 +277,7 @@ class ApiService {
     }
   }
 
-  Future<ApiResponse<Map<String, dynamic>>> getRestaurantDetails(int restaurantId) async {
+  Future<ApiResponse<Map<String, dynamic>>> getRestaurantDetails(String restaurantId) async {
     try {
       final response = await _dio.get('${AppConstants.restaurantsEndpoint}$restaurantId/');
       return ApiResponse.success(response.data);
@@ -222,10 +286,23 @@ class ApiService {
     }
   }
 
-  Future<ApiResponse<List<dynamic>>> getRestaurantMenu(int restaurantId) async {
+  Future<ApiResponse<List<dynamic>>> getRestaurantMenu(String restaurantId) async {
     try {
-      final response = await _dio.get('${AppConstants.menuEndpoint}?restaurant=$restaurantId');
-      return ApiResponse.success(response.data);
+      final response = await _dio.get('${AppConstants.restaurantsEndpoint}$restaurantId/menu/');
+      
+      // Handle different response formats
+      if (response.data is List) {
+        return ApiResponse.success(response.data);
+      } else if (response.data is Map<String, dynamic>) {
+        final results = response.data['results'];
+        if (results is List) {
+          return ApiResponse.success(results);
+        } else {
+          return ApiResponse.success([]);
+        }
+      } else {
+        return ApiResponse.success([]);
+      }
     } on DioException catch (e) {
       return ApiResponse.error(_handleError(e));
     }
@@ -279,6 +356,86 @@ class ApiService {
     }
   }
 
+  Future<ApiResponse<Map<String, dynamic>>> getMenuItemDetails(String itemId) async {
+    try {
+      final response = await _dio.get('${AppConstants.menuItemsEndpoint}$itemId/');
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  // Cart endpoints
+  Future<ApiResponse<Map<String, dynamic>>> getCart() async {
+    try {
+      final response = await _dio.get(AppConstants.cartEndpoint);
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> addToCart({
+    required String menuItemId,
+    required int quantity,
+    String? notes,
+    List<String>? selectedOptions,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '${AppConstants.cartEndpoint}add/',
+        data: {
+          'menu_item_id': menuItemId,
+          'quantity': quantity,
+          if (notes != null) 'notes': notes,
+          if (selectedOptions != null) 'selected_options': selectedOptions,
+        },
+      );
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> updateCartItem({
+    required String cartItemId,
+    required int quantity,
+    String? notes,
+    List<String>? selectedOptions,
+  }) async {
+    try {
+      final response = await _dio.patch(
+        '${AppConstants.cartEndpoint}$cartItemId/',
+        data: {
+          'quantity': quantity,
+          if (notes != null) 'notes': notes,
+          if (selectedOptions != null) 'selected_options': selectedOptions,
+        },
+      );
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> removeFromCart(String cartItemId) async {
+    try {
+      final response = await _dio.delete('${AppConstants.cartEndpoint}$cartItemId/');
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> clearCart() async {
+    try {
+      final response = await _dio.delete('${AppConstants.cartEndpoint}clear/');
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
   // Order endpoints
   Future<ApiResponse<Map<String, dynamic>>> createOrder({
     required int restaurantId,
@@ -316,9 +473,18 @@ class ApiService {
     }
   }
 
-  Future<ApiResponse<Map<String, dynamic>>> getOrderDetails(int orderId) async {
+  Future<ApiResponse<Map<String, dynamic>>> getOrderDetails(dynamic orderId) async {
     try {
       final response = await _dio.get('${AppConstants.ordersEndpoint}$orderId/');
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> trackOrder(String orderId) async {
+    try {
+      final response = await _dio.get('${AppConstants.ordersEndpoint}$orderId/track/');
       return ApiResponse.success(response.data);
     } on DioException catch (e) {
       return ApiResponse.error(_handleError(e));

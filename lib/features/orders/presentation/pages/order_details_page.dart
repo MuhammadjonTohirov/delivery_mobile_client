@@ -1,9 +1,13 @@
+import 'package:delivery_customer/shared/extensions/widget_extensions.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/services/api_service.dart';
+import '../../../../shared/widgets/chips/status_chip.dart';
+import '../../../../shared/utils/formatters/currency_formatter.dart';
+import '../../../../shared/utils/formatters/date_formatter.dart';
 
 class OrderDetailsPage extends StatefulWidget {
-  final int orderId;
+  final String orderId;
 
   const OrderDetailsPage({
     super.key,
@@ -15,21 +19,82 @@ class OrderDetailsPage extends StatefulWidget {
 }
 
 class _OrderDetailsPageState extends State<OrderDetailsPage> {
-  late Map<String, dynamic> orderData;
+  final ApiService _apiService = ApiService();
+  Map<String, dynamic>? _orderData;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // Mock order data - in real app, fetch from API
-    orderData = _getMockOrderData(widget.orderId);
+    _loadOrderDetails();
+  }
+
+  Future<void> _loadOrderDetails() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final response = await _apiService.getOrderDetails(widget.orderId);
+      
+      if (response.success && response.data != null) {
+        setState(() {
+          _orderData = response.data;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+        _showErrorAlert(response.error ?? 'Failed to load order details');
+      }
+    } catch (e) {
+      final errorMessage = 'Failed to load order details: ${e.toString()}';
+      setState(() {
+        _isLoading = false;
+      });
+      _showErrorAlert(errorMessage);
+    }
+  }
+
+  void _showErrorAlert(String message) {
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Error'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _loadOrderDetails();
+              },
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final orderIdStr = _orderData?['id']?.toString() ?? widget.orderId.toString();
+    final shortOrderId = orderIdStr.length > 9 ? orderIdStr.substring(0, 9) : orderIdStr;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Order #${widget.orderId}'),
+        title: Text(_orderData != null ? 'Order #$shortOrderId' : 'Order Details'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadOrderDetails,
+          ),
           IconButton(
             icon: const Icon(Icons.help_outline),
             onPressed: () {
@@ -38,32 +103,65 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildOrderStatusCard(),
-            const SizedBox(height: 16),
-            _buildRestaurantInfoCard(),
-            const SizedBox(height: 16),
-            _buildOrderItemsCard(),
-            const SizedBox(height: 16),
-            _buildDeliveryInfoCard(),
-            const SizedBox(height: 16),
-            _buildPaymentInfoCard(),
-            const SizedBox(height: 16),
-            _buildOrderSummaryCard(),
-          ],
-        ),
+      body: Stack(
+        children: [
+          // Main content - always visible
+          RefreshIndicator(
+            onRefresh: _loadOrderDetails,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              child: _orderData != null 
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildOrderStatusCard(),
+                        const SizedBox(height: 16),
+                        _buildRestaurantInfoCard(),
+                        const SizedBox(height: 16),
+                        _buildOrderItemsCard(),
+                        const SizedBox(height: 16),
+                        _buildDeliveryInfoCard(),
+                        const SizedBox(height: 16),
+                        _buildPaymentInfoCard(),
+                        const SizedBox(height: 16),
+                        _buildOrderSummaryCard(),
+                      ],
+                    )
+                  : _buildPlaceholderContent(),
+            ),
+          ),
+          
+          // Loading overlay - appears on top when loading
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: const Center(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Loading order details...'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
-      bottomNavigationBar: _buildActionButtons(),
+      bottomNavigationBar: _orderData != null ? _buildActionButtons() : null,
     );
   }
 
   Widget _buildOrderStatusCard() {
-    final status = orderData['status'] ?? 'pending';
-    final createdAt = orderData['created_at'] ?? DateTime.now().toIso8601String();
+    final statusData = _orderData!['status'];
+    final status = statusData is Map ? statusData['current'] ?? 'pending' : statusData ?? 'pending';
+    final createdAt = _orderData!['created_at'] ?? _orderData!['timestamps']?['ordered'] ?? DateTime.now().toIso8601String();
 
     return Card(
       child: Padding(
@@ -80,7 +178,10 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                _buildStatusChip(status),
+                StatusChip(
+                  label: _getStatusDisplayText(status),
+                  type: getOrderStatusType(status),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -95,7 +196,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'Ordered on ${_formatDateTime(createdAt)}',
+                  'Ordered ${DateFormatter.formatOrderDate(DateTime.parse(createdAt))}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -108,14 +209,15 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
 
   Widget _buildStatusTimeline(String currentStatus) {
     final statuses = [
-      {'key': 'pending', 'label': 'Order Placed', 'icon': Icons.receipt},
+      {'key': 'placed', 'label': 'Order Placed', 'icon': Icons.receipt},
       {'key': 'confirmed', 'label': 'Confirmed', 'icon': Icons.check_circle},
       {'key': 'preparing', 'label': 'Preparing', 'icon': Icons.restaurant},
-      {'key': 'out_for_delivery', 'label': 'Out for Delivery', 'icon': Icons.delivery_dining},
+      {'key': 'ready', 'label': 'Ready for Pickup', 'icon': Icons.restaurant_menu},
+      {'key': 'delivering', 'label': 'Out for Delivery', 'icon': Icons.delivery_dining},
       {'key': 'delivered', 'label': 'Delivered', 'icon': Icons.home},
     ];
 
-    final currentIndex = statuses.indexWhere((s) => s['key'] == currentStatus);
+    final currentIndex = statuses.indexWhere((s) => s['key'] == currentStatus.toLowerCase());
 
     return Column(
       children: statuses.asMap().entries.map((entry) {
@@ -123,44 +225,58 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
         final status = entry.value;
         final isCompleted = index <= currentIndex;
         final isCurrent = index == currentIndex;
+        final isUpcoming = index > currentIndex;
 
-        return Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: isCompleted 
-                    ? Theme.of(context).primaryColor 
-                    : Theme.of(context).dividerColor,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                status['icon'] as IconData,
-                size: 16,
-                color: isCompleted ? Colors.white : Colors.grey,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                status['label'] as String,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+        return Padding(
+          padding: EdgeInsets.only(bottom: index == statuses.length - 1 ? 0 : 16),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
                   color: isCompleted 
-                      ? Theme.of(context).textTheme.bodyMedium?.color
-                      : Theme.of(context).textTheme.bodySmall?.color,
+                      ? Colors.green 
+                      : Colors.transparent,
+                  border: Border.all(
+                    color: isCompleted || isUpcoming 
+                        ? Colors.green 
+                        : Colors.grey,
+                    width: 2,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  status['icon'] as IconData,
+                  size: 16,
+                  color: isCompleted 
+                      ? Colors.white 
+                      : (isUpcoming ? Colors.green : Colors.grey),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  status['label'] as String,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                    color: isCompleted 
+                        ? Colors.green
+                        : (isUpcoming ? Colors.green : Colors.grey),
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       }).toList(),
     );
   }
 
   Widget _buildRestaurantInfoCard() {
-    final restaurant = orderData['restaurant'] ?? {};
+    final restaurant = _orderData!['restaurant'] ?? {};
+    final restaurantName = restaurant['name'] ?? _orderData!['restaurant_name'] ?? 'Restaurant';
+    final cuisineType = restaurant['cuisine'] ?? 'Restaurant';
 
     return Card(
       child: Padding(
@@ -185,8 +301,9 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
-                    Icons.restaurant,
+                    Icons.store,
                     color: Theme.of(context).primaryColor,
+                    size: 24,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -195,7 +312,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        restaurant['name'] ?? 'Restaurant ${widget.orderId}',
+                        restaurantName,
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -211,7 +328,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            restaurant['cuisine'] ?? 'International',
+                            cuisineType,
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
@@ -234,7 +351,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   }
 
   Widget _buildOrderItemsCard() {
-    final items = orderData['items'] ?? [];
+    final items = _orderData!['items'] ?? [];
 
     return Card(
       child: Padding(
@@ -265,14 +382,14 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              color: Theme.of(context).primaryColor.withAlpha((0.1 * 255).toInt()),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              Icons.fastfood,
-              color: Theme.of(context).primaryColor,
-              size: 20,
-            ),
+            child: Image.network(
+              item['imageUrl'] ?? item['menu_item_image'] ?? '',
+              fit: BoxFit.cover,
+            )
+            .withContainer(clip: Clip.hardEdge, borderRadius: 6),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -280,19 +397,24 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item['name'] ?? 'Unknown Item',
+                  item['name'] ?? item['menu_item_name'] ?? 'Unknown Item',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                if (item['customizations'] != null)
+                if (item['description'] != null && item['description'].toString().isNotEmpty)
                   Text(
-                    item['customizations'],
+                    item['description'],
                     style: Theme.of(context).textTheme.bodySmall,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
               ],
             ),
           ),
+                  
+          const SizedBox(width: 8),
+
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -301,7 +423,10 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               Text(
-                '\$${((item['price'] ?? 0.0) * (item['quantity'] ?? 1)).toStringAsFixed(2)}',
+                _formatCurrency(
+                  (item['totalPrice'] ?? item['subtotal'] ?? item['unit_price'] ?? item['price'] ?? 0.0),
+                  item['currency'] ?? _orderData!['pricing']?['currency'] ?? 'USD'
+                ),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -314,7 +439,8 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   }
 
   Widget _buildDeliveryInfoCard() {
-    final delivery = orderData['delivery'] ?? {};
+    final deliveryData = _orderData!['deliveryAddress'] ?? _orderData!['delivery'] ?? {};
+    final addressText = deliveryData['fullAddress'] ?? _orderData!['delivery_address'] ?? 'No address provided';
 
     return Card(
       child: Padding(
@@ -339,7 +465,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    delivery['address'] ?? '123 Main St, City, State 12345',
+                    addressText,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
@@ -355,12 +481,12 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Estimated: ${delivery['estimated_time'] ?? '25-35 min'}',
+                  'Estimated: ${deliveryData['estimatedTime'] ?? _orderData!['delivery']?['estimatedTime'] ?? '25-35 min'}',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
             ),
-            if (delivery['notes'] != null) ...[
+            if (deliveryData['notes'] != null || _orderData!['notes'] != null) ...[
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -372,7 +498,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      delivery['notes'],
+                      deliveryData['notes'] ?? _orderData!['notes'] ?? '',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
@@ -386,7 +512,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   }
 
   Widget _buildPaymentInfoCard() {
-    final payment = orderData['payment'] ?? {};
+    final payment = _orderData!['payment'] ?? {};
 
     return Card(
       child: Padding(
@@ -417,7 +543,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withAlpha((0.1 * 255).toInt()),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -438,7 +564,15 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   }
 
   Widget _buildOrderSummaryCard() {
-    final summary = orderData['summary'] ?? {};
+    final pricing = _orderData!['pricing'] ?? {};
+    final totalPrice = pricing['total'] ?? _orderData!['total_price'] ?? _orderData!['total'] ?? 0.0;
+    final currency = pricing['currency'] ?? _orderData!['primary_currency'] ?? 'USD';
+    final actualTotal = _parseAmount(totalPrice);
+    
+    // Convert all values to double for comparison
+    final subtotal = _parseAmount(pricing['subtotal']);
+    final deliveryFee = _parseAmount(pricing['deliveryFee'] ?? _orderData!['delivery_fee']);
+    final discount = _parseAmount(pricing['discount'] ?? _orderData!['discount']);
 
     return Card(
       child: Padding(
@@ -453,24 +587,18 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
               ),
             ),
             const SizedBox(height: 12),
-            _buildSummaryRow('Subtotal', summary['subtotal'] ?? 25.99),
-            _buildSummaryRow('Delivery Fee', summary['delivery_fee'] ?? 2.99),
-            _buildSummaryRow('Tax', summary['tax'] ?? 2.28),
-            if (summary['discount'] != null)
-              _buildSummaryRow('Discount', summary['discount'], isDiscount: true),
-            const Divider(),
-            _buildSummaryRow(
-              'Total',
-              summary['total'] ?? 31.26,
-              isTotal: true,
-            ),
+            if (subtotal > 0) _buildSummaryRow('Subtotal', subtotal, currency),
+            if (deliveryFee > 0) _buildSummaryRow('Delivery Fee', deliveryFee, currency),
+            if (discount > 0) _buildSummaryRow('Discount', discount, currency, isDiscount: true),
+            if (subtotal > 0 || deliveryFee > 0 || discount > 0) const Divider(),
+            _buildSummaryRow('Total', actualTotal, currency, isTotal: true),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSummaryRow(String label, double amount, {bool isTotal = false, bool isDiscount = false}) {
+  Widget _buildSummaryRow(String label, double amount, String currency, {bool isTotal = false, bool isDiscount = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -485,7 +613,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 : Theme.of(context).textTheme.bodyMedium,
           ),
           Text(
-            '${isDiscount ? '-' : ''}\$${amount.abs().toStringAsFixed(2)}',
+            '${isDiscount ? '-' : ''}${_formatCurrency(amount.abs(), currency)}',
             style: isTotal
                 ? Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
@@ -502,67 +630,152 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     );
   }
 
-  Widget _buildStatusChip(String status) {
-    Color backgroundColor;
-    Color textColor;
-    String displayText;
 
-    switch (status.toLowerCase()) {
-      case 'pending':
-        backgroundColor = Colors.orange.withOpacity(0.1);
-        textColor = Colors.orange;
-        displayText = 'Pending';
-        break;
-      case 'confirmed':
-        backgroundColor = Colors.blue.withOpacity(0.1);
-        textColor = Colors.blue;
-        displayText = 'Confirmed';
-        break;
-      case 'preparing':
-        backgroundColor = Colors.purple.withOpacity(0.1);
-        textColor = Colors.purple;
-        displayText = 'Preparing';
-        break;
-      case 'out_for_delivery':
-        backgroundColor = Colors.amber.withOpacity(0.1);
-        textColor = Colors.amber.shade700;
-        displayText = 'Out for Delivery';
-        break;
-      case 'delivered':
-        backgroundColor = Colors.green.withOpacity(0.1);
-        textColor = Colors.green;
-        displayText = 'Delivered';
-        break;
-      case 'cancelled':
-        backgroundColor = Colors.red.withOpacity(0.1);
-        textColor = Colors.red;
-        displayText = 'Cancelled';
-        break;
-      default:
-        backgroundColor = Colors.grey.withOpacity(0.1);
-        textColor = Colors.grey;
-        displayText = status;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        displayText,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
+  Widget _buildPlaceholderContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Order Status Card Placeholder
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Order Status',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withAlpha((0.1 * 255).toInt()),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Text(
+                        'Loading...',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Loading order information...',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
+        const SizedBox(height: 16),
+        
+        // Restaurant Info Placeholder
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Restaurant',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withAlpha((0.1 * 255).toInt()),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.store, color: Colors.grey),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            height: 16,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withAlpha((0.1 * 255).toInt()),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            height: 14,
+                            width: 120,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withAlpha((0.1 * 255).toInt()),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        
+        // Order Items Placeholder
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Order Items',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Loading order items...',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildActionButtons() {
-    final status = orderData['status'] ?? 'pending';
+    final statusData = _orderData!['status'];
+    final status = statusData is Map ? statusData['current'] ?? 'pending' : statusData ?? 'pending';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -650,12 +863,49 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     }
   }
 
-  String _formatDateTime(String dateString) {
-    try {
-      final date = DateTime.parse(dateString);
-      return '${date.day}/${date.month}/${date.year} at ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
-    } catch (e) {
-      return 'Unknown';
+  double _parseAmount(dynamic amount) {
+    if (amount == null) return 0.0;
+    if (amount is double) return amount;
+    if (amount is int) return amount.toDouble();
+    if (amount is String) return double.tryParse(amount) ?? 0.0;
+    return 0.0;
+  }
+
+  String _formatCurrency(dynamic amount, String currency) {
+    final value = _parseAmount(amount);
+    
+    switch (currency.toUpperCase()) {
+      case 'UZS':
+        return CurrencyFormatter.formatUZB(value);
+      case 'USD':
+        return CurrencyFormatter.formatUSD(value);
+      case 'RUB':
+        return CurrencyFormatter.formatRUB(value);
+      default:
+        return CurrencyFormatter.formatUSD(value);
+    }
+  }
+
+  String _getStatusDisplayText(String status) {
+    switch (status.toUpperCase()) {
+      case 'PLACED':
+        return 'Order Placed';
+      case 'CONFIRMED':
+        return 'Confirmed';
+      case 'PREPARING':
+        return 'Preparing';
+      case 'READY_FOR_PICKUP':
+      case 'READY':
+        return 'Ready';
+      case 'PICKED_UP':
+      case 'DELIVERING':
+        return 'Out for Delivery';
+      case 'DELIVERED':
+        return 'Delivered';
+      case 'CANCELLED':
+        return 'Cancelled';
+      default:
+        return 'Unknown';
     }
   }
 
@@ -771,49 +1021,4 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     );
   }
 
-  Map<String, dynamic> _getMockOrderData(int orderId) {
-    return {
-      'id': orderId,
-      'status': 'preparing',
-      'created_at': '2024-01-15T12:30:00Z',
-      'restaurant': {
-        'name': 'Pizza Palace',
-        'rating': 4.5,
-        'cuisine': 'Italian',
-      },
-      'items': [
-        {
-          'name': 'Margherita Pizza',
-          'price': 12.99,
-          'quantity': 1,
-          'customizations': 'Extra cheese',
-        },
-        {
-          'name': 'Caesar Salad',
-          'price': 8.99,
-          'quantity': 1,
-        },
-        {
-          'name': 'Garlic Bread',
-          'price': 4.99,
-          'quantity': 2,
-        },
-      ],
-      'delivery': {
-        'address': '123 Main St, Apt 4B, City, State 12345',
-        'estimated_time': '25-35 min',
-        'notes': 'Please ring the doorbell',
-      },
-      'payment': {
-        'method': 'card',
-        'status': 'Paid',
-      },
-      'summary': {
-        'subtotal': 31.96,
-        'delivery_fee': 2.99,
-        'tax': 2.79,
-        'total': 37.74,
-      },
-    };
-  }
 }

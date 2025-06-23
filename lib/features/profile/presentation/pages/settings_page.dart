@@ -402,8 +402,8 @@ class _SettingsPageState extends State<SettingsPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Version: 1.0.0'),
-            Text('Build: 1'),
+            const Text('Version: 1.0.0'),
+            const Text('Build: 1'),
             Text('Platform: ${Theme.of(context).platform.name}'),
             const SizedBox(height: 16),
             const Text('Delivery Customer App'),

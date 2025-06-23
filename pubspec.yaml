@@ -1,11 +1,10 @@
-name: delivery_customer_app
-description: A customer mobile app for the delivery platform.
-publish_to: 'none'
+name: delivery_customer
+description: "A customer mobile app for the delivery platform."
+publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
-  flutter: ">=3.10.0"
+  sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
   flutter:
