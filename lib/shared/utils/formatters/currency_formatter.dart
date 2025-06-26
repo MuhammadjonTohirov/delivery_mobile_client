@@ -47,6 +47,29 @@ class CurrencyFormatter {
     }
   }
 
+  /// Format amount with dynamic currency information from server
+  static String formatWithCurrency(double amount, {
+    String? currencyCode,
+    String? currencySymbol,
+    String? locale,
+  }) {
+    // If currency info provided from server, use it
+    if (currencyCode != null || currencySymbol != null) {
+      final symbol = currencySymbol ?? _getSymbolForCurrencyCode(currencyCode);
+      final localeCode = locale ?? _getLocaleForCurrencyCode(currencyCode);
+      
+      final formatter = NumberFormat.currency(
+        locale: localeCode,
+        symbol: symbol,
+        decimalDigits: _getDecimalDigitsForCurrency(currencyCode),
+      );
+      return formatter.format(amount);
+    }
+    
+    // Fallback to locale-based formatting
+    return formatByLocale(amount, locale ?? 'en');
+  }
+
   /// Format amount as compact currency (e.g., $1.2K)
   static String formatCompact(double amount, [String locale = 'en']) {
     final formatter = NumberFormat.compactCurrency(
@@ -82,5 +105,57 @@ class CurrencyFormatter {
   /// Check if amount is valid for currency operations
   static bool isValidAmount(double? amount) {
     return amount != null && amount >= 0 && amount.isFinite;
+  }
+
+  /// Get currency symbol from currency code
+  static String _getSymbolForCurrencyCode(String? currencyCode) {
+    if (currencyCode == null) return '\$';
+    
+    switch (currencyCode.toUpperCase()) {
+      case 'USD':
+        return '\$';
+      case 'RUB':
+        return '₽';
+      case 'UZS':
+        return 'сўм';
+      case 'EUR':
+        return '€';
+      case 'GBP':
+        return '£';
+      default:
+        return currencyCode.toUpperCase();
+    }
+  }
+
+  /// Get locale from currency code
+  static String _getLocaleForCurrencyCode(String? currencyCode) {
+    if (currencyCode == null) return 'en_US';
+    
+    switch (currencyCode.toUpperCase()) {
+      case 'USD':
+        return 'en_US';
+      case 'RUB':
+        return 'ru_RU';
+      case 'UZS':
+        return 'uz_UZ';
+      case 'EUR':
+        return 'en_EU';
+      case 'GBP':
+        return 'en_GB';
+      default:
+        return 'en_US';
+    }
+  }
+
+  /// Get decimal digits for currency
+  static int _getDecimalDigitsForCurrency(String? currencyCode) {
+    if (currencyCode == null) return 2;
+    
+    switch (currencyCode.toUpperCase()) {
+      case 'UZS':
+        return 0;
+      default:
+        return 2;
+    }
   }
 }

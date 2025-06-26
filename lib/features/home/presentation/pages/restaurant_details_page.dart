@@ -1,9 +1,14 @@
+import 'package:delivery_customer/core/models/menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../shared/widgets/cart/cart_wrapper.dart';
+import '../../../../shared/widgets/cart/cart_helpers.dart';
+import '../../../../shared/utils/formatters/currency_formatter.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../cart/presentation/bloc/cart_bloc.dart';
 
 class RestaurantDetailsPage extends StatefulWidget {
@@ -20,9 +25,7 @@ class RestaurantDetailsPage extends StatefulWidget {
   State<RestaurantDetailsPage> createState() => _RestaurantDetailsPageState();
 }
 
-class _RestaurantDetailsPageState extends State<RestaurantDetailsPage>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> {
   Map<String, dynamic>? _restaurantDetails;
   List<dynamic> _menuItems = [];
   List<dynamic> _reviews = [];
@@ -32,14 +35,7 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
     _loadRestaurantData();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadRestaurantData() async {
@@ -58,14 +54,17 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage>
         _restaurantDetails = widget.restaurantData!;
       }
       
-      // Load menu items
-      final menuResponse = await apiService.getRestaurantMenu(widget.restaurantId);
+      // Load menu items for this restaurant
+      final menuResponse = await apiService.getMenuItems(restaurantId: widget.restaurantId);
       if (menuResponse.success && menuResponse.data != null) {
-        _menuItems = menuResponse.data!;
+        _menuItems = menuResponse.data!['results'] ?? menuResponse.data!;
       }
       
-      // Mock reviews data for now
-      _reviews = _generateMockReviews();
+      // Load reviews from server
+      final reviewsResponse = await apiService.getRestaurantReviews(widget.restaurantId);
+      if (reviewsResponse.success && reviewsResponse.data != null) {
+        _reviews = reviewsResponse.data!;
+      }
       
     } catch (e) {
       print('Error loading restaurant data: $e');
@@ -74,42 +73,6 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage>
     }
   }
 
-  List<dynamic> _generateMockReviews() {
-    return [
-      {
-        'id': 1,
-        'customer_name': 'John Doe',
-        'rating': 5,
-        'comment': 'Amazing food and fast delivery! The pizza was hot and delicious.',
-        'created_at': '2024-01-15T10:30:00Z',
-        'avatar': null,
-      },
-      {
-        'id': 2,
-        'customer_name': 'Sarah Johnson',
-        'rating': 4,
-        'comment': 'Good quality food, will definitely order again. Great variety of options.',
-        'created_at': '2024-01-14T18:45:00Z',
-        'avatar': null,
-      },
-      {
-        'id': 3,
-        'customer_name': 'Mike Chen',
-        'rating': 5,
-        'comment': 'Best restaurant in town! Outstanding service and delicious meals.',
-        'created_at': '2024-01-13T14:20:00Z',
-        'avatar': null,
-      },
-      {
-        'id': 4,
-        'customer_name': 'Emily Davis',
-        'rating': 4,
-        'comment': 'Fresh ingredients and great presentation. Highly recommended!',
-        'created_at': '2024-01-12T20:10:00Z',
-        'avatar': null,
-      },
-    ];
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,69 +93,70 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage>
     final bannerUrl = restaurant['banner_image'];
     final logoUrl = restaurant['logo'];
     
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // Enhanced App Bar with Restaurant Image
-          SliverAppBar(
-            expandedHeight: 280,
-            pinned: true,
-            backgroundColor: Theme.of(context).primaryColor,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Background Image
-                  if (bannerUrl != null)
-                    CachedNetworkImage(
-                      imageUrl: bannerUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: Theme.of(context).primaryColor.withAlpha(76),
-                        child: const Center(child: CircularProgressIndicator()),
-                      ),
-                      errorWidget: (context, url, error) => _buildDefaultBackground(context),
-                    )
-                  else
-                    _buildDefaultBackground(context),
-                  
-                  // Gradient overlay
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withAlpha(178),
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                  // Restaurant Logo
-                  if (logoUrl != null)
-                    Positioned(
-                      bottom: 20,
-                      left: 20,
-                      child: Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withAlpha(51),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
+    return CartWrapper(
+      child: Scaffold(
+        body: CustomScrollView(
+          slivers: [
+            // Enhanced App Bar with Restaurant Image
+            SliverAppBar(
+              expandedHeight: 280,
+              pinned: true,
+              backgroundColor: Theme.of(context).primaryColor,
+              flexibleSpace: FlexibleSpaceBar(
+                background: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Background Image
+                    if (bannerUrl != null)
+                      CachedNetworkImage(
+                        imageUrl: bannerUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: Theme.of(context).primaryColor.withAlpha(76),
+                          child: const Center(child: CircularProgressIndicator()),
+                        ),
+                        errorWidget: (context, url, error) => _buildDefaultBackground(context),
+                      )
+                    else
+                      _buildDefaultBackground(context),
+                    
+                    // Gradient overlay
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withAlpha(178),
                           ],
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: CachedNetworkImage(
-                            imageUrl: logoUrl,
+                      ),
+                    ),
+                    
+                    // Restaurant Logo
+                    if (logoUrl != null)
+                      Positioned(
+                        bottom: 20,
+                        left: 20,
+                        child: Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withAlpha(51),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: CachedNetworkImage(
+                              imageUrl: logoUrl,
                             fit: BoxFit.cover,
                             errorWidget: (context, url, error) => Icon(
                               Icons.restaurant,
@@ -267,38 +231,52 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage>
             ),
           ),
 
-          // Enhanced Tab Bar
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _TabBarDelegate(
-              controller: _tabController,
-              color: Theme.of(context).scaffoldBackgroundColor,
-              primaryColor: Theme.of(context).primaryColor,
+          // Menu Section Header
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Text(
+                'Menu',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
 
-          // Tab Bar View Content
-          SliverToBoxAdapter(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.6,
-              constraints: BoxConstraints(
-                minHeight: 400,
-                maxHeight: MediaQuery.of(context).size.height * 0.7,
-              ),
-              child: TabBarView(
-                controller: _tabController,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _buildEnhancedMenuTab(),
-                  _buildEnhancedReviewsTab(),
-                  _buildEnhancedInfoTab(),
-                ],
-              ),
+          // Menu Items List
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                if (_menuItems.isEmpty) {
+                  return SizedBox(
+                    height: 200,
+                    child: const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.restaurant_menu, size: 64, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text('Menu not available'),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                
+                final item = _menuItems[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: _buildMenuItemCard(item),
+                );
+              },
+              childCount: _menuItems.isEmpty ? 1 : _menuItems.length,
             ),
           ),
         ],
+        ),
+        bottomNavigationBar: _buildEnhancedCartButton(),
       ),
-      bottomNavigationBar: _buildEnhancedCartButton(),
     );
   }
 
@@ -335,11 +313,26 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          name,
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+        // Restaurant name with info button
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                name,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            IconButton(
+              onPressed: () => _showRestaurantInfo(),
+              icon: Icon(
+                Icons.info_outline,
+                color: Theme.of(context).primaryColor,
+              ),
+              tooltip: 'Restaurant Info',
+            ),
+          ],
         ),
         const SizedBox(height: 4),
         Text(
@@ -349,25 +342,36 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage>
           ),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            RatingBarIndicator(
-              rating: double.tryParse(rating) ?? 4.5,
-              itemBuilder: (context, index) => const Icon(
-                Icons.star,
-                color: Colors.amber,
+        // Clickable ratings
+        GestureDetector(
+          onTap: () => _showReviews(),
+          child: Row(
+            children: [
+              RatingBarIndicator(
+                rating: double.tryParse(rating) ?? 4.5,
+                itemBuilder: (context, index) => const Icon(
+                  Icons.star,
+                  color: Colors.amber,
+                ),
+                itemCount: 5,
+                itemSize: 20,
               ),
-              itemCount: 5,
-              itemSize: 20,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '$rating ($totalReviews reviews)',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
+              const SizedBox(width: 8),
+              Text(
+                '$rating ($totalReviews reviews)',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).primaryColor,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 4),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 14,
+                color: Theme.of(context).primaryColor,
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -603,7 +607,7 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage>
                   Row(
                     children: [
                       Text(
-                        '\$${double.tryParse(price)?.toStringAsFixed(2) ?? price}',
+                        MenuItem.fromJson(item).formattedPrice,
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: Theme.of(context).primaryColor,
                           fontWeight: FontWeight.bold,
@@ -645,15 +649,9 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage>
               child: IconButton(
                 onPressed: isAvailable
                     ? () {
-                        context.read<CartBloc>().add(
-                          CartItemAdded(item: item),
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('$name added to cart'),
-                            duration: const Duration(seconds: 1),
-                          ),
-                        );
+                        // Create MenuItem from the raw item data
+                        final menuItem = MenuItem.fromJson(item);
+                        CartHelpers.showMenuItemModal(context, menuItem);
                       }
                     : null,
                 icon: Icon(
@@ -1090,35 +1088,15 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withAlpha(51),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '${state.itemCount}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'View Cart',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      AppLocalizations.of(context).viewCartWithItems(state.itemCount),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Text(
-                      '\$${state.total.toStringAsFixed(2)}',
+                      CurrencyFormatter.formatUSD(state.total),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -1135,6 +1113,82 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage>
     );
   }
 
+  void _showReviews() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.5,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Expanded(
+                child: _buildEnhancedReviewsTab(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showRestaurantInfo() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        maxChildSize: 0.8,
+        minChildSize: 0.4,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Expanded(
+                child: _buildEnhancedInfoTab(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showComingSoon(String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1142,57 +1196,6 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage>
         duration: const Duration(seconds: 1),
       ),
     );
-  }
-}
-
-class _TabBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabController controller;
-  final Color color;
-  final Color primaryColor;
-
-  _TabBarDelegate({
-    required this.controller,
-    required this.color,
-    required this.primaryColor,
-  });
-
-  @override
-  double get minExtent => 48.0;
-
-  @override
-  double get maxExtent => 48.0;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(25),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: TabBar(
-        controller: controller,
-        labelColor: primaryColor,
-        unselectedLabelColor: Colors.grey,
-        indicatorWeight: 3,
-        indicatorColor: primaryColor,
-        tabs: const [
-          Tab(text: 'Menu'),
-          Tab(text: 'Reviews'),
-          Tab(text: 'Info'),
-        ],
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
-    return false;
   }
 }
 

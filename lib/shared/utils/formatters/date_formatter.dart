@@ -144,23 +144,23 @@ class DateFormatter {
       },
       'minutesAgo': {
         'en': '${value1}m ago',
-        'ru': '${value1} мин назад',
-        'uz': '${value1} daq oldin',
+        'ru': '$value1 мин назад',
+        'uz': '$value1 daq oldin',
       },
       'hoursAgo': {
         'en': '${value1}h ago',
-        'ru': '${value1} ч назад',
-        'uz': '${value1} soat oldin',
+        'ru': '$value1 ч назад',
+        'uz': '$value1 soat oldin',
       },
       'daysAgo': {
         'en': '${value1}d ago',
-        'ru': '${value1} дн назад',
-        'uz': '${value1} kun oldin',
+        'ru': '$value1 дн назад',
+        'uz': '$value1 kun oldin',
       },
       'weeksAgo': {
         'en': '${value1}w ago',
-        'ru': '${value1} нед назад',
-        'uz': '${value1} hafta oldin',
+        'ru': '$value1 нед назад',
+        'uz': '$value1 hafta oldin',
       },
       'today': {
         'en': 'Today',
@@ -173,19 +173,19 @@ class DateFormatter {
         'uz': 'Kecha',
       },
       'deliveryMinutes': {
-        'en': '${value1} min',
-        'ru': '${value1} мин',
-        'uz': '${value1} daq',
+        'en': '$value1 min',
+        'ru': '$value1 мин',
+        'uz': '$value1 daq',
       },
       'deliveryHours': {
         'en': '${value1}h',
-        'ru': '${value1} ч',
-        'uz': '${value1} soat',
+        'ru': '$value1 ч',
+        'uz': '$value1 soat',
       },
       'deliveryHoursMinutes': {
         'en': '${value1}h ${value2}m',
-        'ru': '${value1} ч ${value2} мин',
-        'uz': '${value1} soat ${value2} daq',
+        'ru': '$value1 ч $value2 мин',
+        'uz': '$value1 soat $value2 daq',
       },
     };
 

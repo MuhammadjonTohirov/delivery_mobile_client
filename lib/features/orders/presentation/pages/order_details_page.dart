@@ -424,7 +424,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
               ),
               Text(
                 _formatCurrency(
-                  (item['totalPrice'] ?? item['subtotal'] ?? item['unit_price'] ?? item['price'] ?? 0.0),
+                  (item['totalPrice'] ?? item['subtotal'] ?? item['unit_price'] ?? double.tryParse(item['price'] ?? '0.0')?? 0.0),
                   item['currency'] ?? _orderData!['pricing']?['currency'] ?? 'USD'
                 ),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(

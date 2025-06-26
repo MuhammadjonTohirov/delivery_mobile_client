@@ -275,7 +275,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
               isLast: isLast,
               timestamp: _getStepTimestamp(step['key']!, trackingEvents),
             );
-          }).toList(),
+          }),
         ],
       ),
     );
@@ -530,14 +530,14 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                   ),
                 ),
                 Text(
-                  CurrencyFormatter.formatUSD((item['price'] ?? 0.0).toDouble()),
+                  CurrencyFormatter.formatUSD((double.tryParse(item['price'] ?? '0.0')?? 0.0).toDouble()),
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
-          )).toList(),
+          )),
         ],
       ),
     );

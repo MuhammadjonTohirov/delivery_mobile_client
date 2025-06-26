@@ -211,6 +211,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get removeFromCart => 'Удалить из корзины';
   @override
   String get updateQuantity => 'Изменить количество';
+  @override
+  String get viewCart => 'Смотреть корзину';
+  @override
+  String get item => 'товар';
+  @override
+  String get items => 'товаров';
+  @override
+  String viewCartWithItems(int count) => 'Смотреть корзину ($count ${_getRussianPluralForm(count)})';
   
   // Orders
   @override
@@ -356,4 +364,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get featured => 'Рекомендуемое';
   @override
   String get unavailable => 'Недоступно';
+
+  // Helper function for Russian plural forms
+  String _getRussianPluralForm(int count) {
+    if (count % 10 == 1 && count % 100 != 11) {
+      return 'товар'; // 1, 21, 31... but not 11
+    } else if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) {
+      return 'товара'; // 2-4, 22-24, 32-34... but not 12-14
+    } else {
+      return 'товаров'; // 0, 5-20, 25-30, etc.
+    }
+  }
 }

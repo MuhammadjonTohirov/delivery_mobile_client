@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../shared/widgets/cart/cart_wrapper.dart';
 import '../../../../shared/widgets/states/empty_state_widget.dart';
 import '../../../../shared/widgets/states/error_state_widget.dart';
 import '../../../../shared/utils/formatters/currency_formatter.dart';
@@ -22,7 +23,9 @@ class _CartPageState extends State<CartPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return CartWrapper(
+      showCartButton: false, // Don't show cart button on cart page
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Your Cart'),
         actions: [
@@ -78,6 +81,7 @@ class _CartPageState extends State<CartPage> {
           }
           return const SizedBox.shrink();
         },
+      ),
       ),
     );
   }
@@ -142,7 +146,7 @@ class _CartPageState extends State<CartPage> {
                     ),
                   const SizedBox(height: 8),
                   Text(
-                    '\$${(item['price'] ?? 0.0).toStringAsFixed(2)}',
+                    CurrencyFormatter.formatUSD(double.tryParse(item['price'] ?? '0.0')?? 0.0),
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: Theme.of(context).primaryColor,
                       fontWeight: FontWeight.bold,

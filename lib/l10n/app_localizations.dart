@@ -145,6 +145,10 @@ abstract class AppLocalizations {
   String get checkout;
   String get removeFromCart;
   String get updateQuantity;
+  String get viewCart;
+  String get item;
+  String get items;
+  String viewCartWithItems(int count);
   
   // Orders
   String get orders;

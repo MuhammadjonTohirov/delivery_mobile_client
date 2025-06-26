@@ -330,7 +330,8 @@ class ApiService {
     }
   }
 
-  Future<ApiResponse<Map<String, dynamic>>> searchMenuItems({
+  Future<ApiResponse<Map<String, dynamic>>> getMenuItems({
+    String? restaurantId,
     String? query,
     String? category,
     int page = 1,
@@ -340,6 +341,7 @@ class ApiService {
       final queryParams = <String, dynamic>{
         'page': page,
         'page_size': pageSize,
+        if (restaurantId != null) 'restaurant': restaurantId,
         if (query != null && query.isNotEmpty) 'search': query,
         if (category != null && category.isNotEmpty) 'category': category,
         'is_available': 'true',
@@ -354,6 +356,20 @@ class ApiService {
     } on DioException catch (e) {
       return ApiResponse.error(_handleError(e));
     }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> searchMenuItems({
+    String? query,
+    String? category,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    return getMenuItems(
+      query: query,
+      category: category,
+      page: page,
+      pageSize: pageSize,
+    );
   }
 
   Future<ApiResponse<Map<String, dynamic>>> getMenuItemDetails(String itemId) async {
@@ -527,6 +543,41 @@ class ApiService {
   }
 
   // Reviews endpoints
+  Future<ApiResponse<List<dynamic>>> getRestaurantReviews(
+    String restaurantId, {
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'restaurant': restaurantId,
+        'page': page,
+        'page_size': pageSize,
+      };
+
+      final response = await _dio.get(
+        AppConstants.reviewsEndpoint,
+        queryParameters: queryParams,
+      );
+      
+      // Handle different response formats
+      if (response.data is List) {
+        return ApiResponse.success(response.data);
+      } else if (response.data is Map<String, dynamic>) {
+        final results = response.data['results'];
+        if (results is List) {
+          return ApiResponse.success(results);
+        } else {
+          return ApiResponse.success([]);
+        }
+      } else {
+        return ApiResponse.success([]);
+      }
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
   Future<ApiResponse<Map<String, dynamic>>> submitReview({
     required int restaurantId,
     required int orderId,

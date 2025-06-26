@@ -270,7 +270,7 @@ extension ColorHelpers on BuildContext {
   /// Get specific theme colors
   Color get primaryColor => colors.primary;
   Color get secondaryColor => colors.secondary;
-  Color get backgroundColor => colors.background;
+  Color get backgroundColor => colors.surface;
   Color get surfaceColor => colors.surface;
   Color get errorColor => colors.error;
   
@@ -283,6 +283,6 @@ extension ColorHelpers on BuildContext {
   bool get isDarkMode => Theme.of(this).brightness == Brightness.dark;
   
   /// Get contrasting color for current theme
-  Color get onBackground => colors.onBackground;
+  Color get onBackground => colors.onSurface;
   Color get onSurface => colors.onSurface;
 }

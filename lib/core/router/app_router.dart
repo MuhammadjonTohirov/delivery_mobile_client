@@ -6,6 +6,7 @@ import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/language/presentation/pages/language_selection_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/home/presentation/pages/restaurant_details_page.dart';
+import '../../features/home/presentation/pages/restaurant_menu_items_page.dart';
 import '../../features/cart/presentation/pages/cart_page.dart';
 import '../../features/cart/presentation/pages/checkout_page.dart';
 import '../../features/orders/presentation/pages/order_details_page.dart';
@@ -22,6 +23,7 @@ class AppRouter {
   static const String forgotPassword = '/forgot-password';
   static const String home = '/home';
   static const String restaurantDetails = '/restaurant-details';
+  static const String restaurantMenuItems = '/restaurant-menu-items';
   static const String cart = '/cart';
   static const String checkout = '/checkout';
   static const String orders = '/orders';
@@ -80,6 +82,23 @@ class AppRouter {
         }
         return MaterialPageRoute(
           builder: (_) => RestaurantDetailsPage(restaurantId: restaurantId),
+          settings: settings,
+        );
+
+      case restaurantMenuItems:
+        final args = settings.arguments as Map<String, dynamic>?;
+        final restaurantId = args?['restaurantId'] as String?;
+        final restaurantName = args?['restaurantName'] as String?;
+        final restaurantData = args?['restaurantData'] as Map<String, dynamic>?;
+        if (restaurantId == null || restaurantName == null) {
+          return _errorRoute('Restaurant ID and name are required');
+        }
+        return MaterialPageRoute(
+          builder: (_) => RestaurantMenuItemsPage(
+            restaurantId: restaurantId,
+            restaurantName: restaurantName,
+            restaurantData: restaurantData,
+          ),
           settings: settings,
         );
 

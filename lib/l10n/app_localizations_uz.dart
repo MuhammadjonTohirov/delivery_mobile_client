@@ -211,6 +211,14 @@ class AppLocalizationsUz extends AppLocalizations {
   String get removeFromCart => 'Savatdan olib tashlash';
   @override
   String get updateQuantity => 'Miqdorni o\'zgartirish';
+  @override
+  String get viewCart => 'Savatni ko\'rish';
+  @override
+  String get item => 'mahsulot';
+  @override
+  String get items => 'mahsulotlar';
+  @override
+  String viewCartWithItems(int count) => 'Savatni ko\'rish ($count ${count == 1 ? item : items})';
   
   // Orders
   @override

@@ -130,7 +130,7 @@ class _MenuItemDetailsPageState extends State<MenuItemDetailsPage> {
   Widget _buildItemImage() {
     final imageUrl = _menuItem!['image'] ?? _menuItem!['image_url'];
     
-    return Container(
+    return SizedBox(
       height: 250,
       width: double.infinity,
       child: imageUrl != null && imageUrl.toString().isNotEmpty
@@ -151,7 +151,7 @@ class _MenuItemDetailsPageState extends State<MenuItemDetailsPage> {
 
   Widget _buildImagePlaceholder() {
     return Container(
-      color: Theme.of(context).colorScheme.surfaceVariant,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Center(
         child: Icon(
           Icons.restaurant_menu,
@@ -267,7 +267,7 @@ class _MenuItemDetailsPageState extends State<MenuItemDetailsPage> {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
@@ -323,7 +323,7 @@ class _MenuItemDetailsPageState extends State<MenuItemDetailsPage> {
                 });
               },
             );
-          }).toList(),
+          }),
         ],
       ),
     );

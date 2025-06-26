@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../shared/widgets/cart/cart_wrapper.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../search/presentation/pages/search_page.dart';
 import '../../../orders/presentation/pages/orders_page.dart';
@@ -28,41 +29,43 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search_outlined),
-            activeIcon: Icon(Icons.search),
-            label: 'Search',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long_outlined),
-            activeIcon: Icon(Icons.receipt_long),
-            label: 'Orders',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outlined),
-            activeIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+    return CartWrapper(
+      child: Scaffold(
+        body: IndexedStack(
+          index: _currentIndex,
+          children: _pages,
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.search_outlined),
+              activeIcon: Icon(Icons.search),
+              label: 'Search',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.receipt_long_outlined),
+              activeIcon: Icon(Icons.receipt_long),
+              label: 'Orders',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outlined),
+              activeIcon: Icon(Icons.person),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -172,7 +175,7 @@ class WelcomeSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -182,26 +185,14 @@ class WelcomeSection extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Good Morning!',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'What would you like to eat today?',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Colors.white.withAlpha((0.9 * 255).toInt()),
-            ),
-          ),
-        ],
+      child: Text(
+        'What would you like to eat today?',
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -277,62 +268,68 @@ class CategoriesSection extends StatelessWidget {
         const SizedBox(height: 16),
         categories.isEmpty
           ? const Center(child: Text('No categories available'))
-          : GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 0.8,
-              ),
-              itemCount: categories.length > 8 ? 8 : categories.length,
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                final categoryName = category['name'] ?? 'Category';
-                
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => CategoryResultsPage(
-                          categoryId: category['id']?.toString(),
-                          categoryName: categoryName,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor.withAlpha(25),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Icon(
-                          _getCategoryIcon(categoryName),
-                          size: 30,
-                          color: Theme.of(context).primaryColor,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: Text(
-                          categoryName,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w500,
+          : SizedBox(
+              height: 120,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                itemCount: categories.length,
+                itemBuilder: (context, index) {
+                  final category = categories[index];
+                  final categoryName = category['name'] ?? 'Category';
+                  
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => CategoryResultsPage(
+                            categoryId: category['id']?.toString(),
+                            categoryName: categoryName,
                           ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
+                      );
+                    },
+                    child: Container(
+                      width: 90,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 75,
+                            height: 75,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).primaryColor.withAlpha(25),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withAlpha(12),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              _getCategoryIcon(categoryName),
+                              size: 35,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            categoryName,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                );
-              },
+                    ),
+                  );
+                },
+              ),
             ),
       ],
     );
@@ -358,15 +355,15 @@ class FeaturedRestaurantsSection extends StatelessWidget {
         restaurants.isEmpty
           ? const Center(child: Text('No featured restaurants available'))
           : SizedBox(
-              height: 204,
+              height: 220,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: restaurants.length,
                 itemBuilder: (context, index) {
                   final restaurant = restaurants[index];
                   final name = restaurant['name'] ?? 'Restaurant';
-                  final rating = restaurant['average_rating']?.toString() ?? '4.5';
-                  final deliveryTime = restaurant['estimated_delivery_time']?.toString() ?? '30';
+                  final rating = restaurant['average_rating']?.toString() ?? '0.0';
+                  final deliveryTime = restaurant['estimated_delivery_time']?.toString() ?? 'N/A';
                   final bannerUrl = restaurant['banner_image'];
                   final logoUrl = restaurant['logo'];
                   final tagline = restaurant['tagline'] ?? '';
@@ -386,6 +383,7 @@ class FeaturedRestaurantsSection extends StatelessWidget {
                     },
                     child: Container(
                       width: 300,
+                      height: 220,
                       margin: const EdgeInsets.only(right: 16),
                       decoration: BoxDecoration(
                         color: Theme.of(context).cardColor,
@@ -482,77 +480,86 @@ class FeaturedRestaurantsSection extends StatelessWidget {
                             ],
                           ),
                           // Restaurant Info
-                          Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Restaurant Name
-                                Text(
-                                  name,
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                // Tagline or Cuisine Type
-                                if (tagline.isNotEmpty || cuisineType.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 2),
-                                    child: Text(
-                                      tagline.isNotEmpty ? tagline : cuisineType,
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: Colors.grey[600],
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                const SizedBox(height: 6),
-                                // Rating and Reviews
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.star,
-                                      size: 16,
-                                      color: Colors.amber,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      rating,
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '($totalReviews)',
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    // Delivery Time
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.access_time,
-                                          size: 14,
-                                          color: Colors.grey[600],
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Restaurant Name
+                                      Text(
+                                        name,
+                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
                                         ),
-                                        const SizedBox(width: 2),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      // Tagline or Cuisine Type
+                                      if (tagline.isNotEmpty || cuisineType.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 2),
+                                          child: Text(
+                                            tagline.isNotEmpty ? tagline : cuisineType,
+                                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                              color: Colors.grey[600],
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  // Rating and Reviews
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.star,
+                                        size: 16,
+                                        color: totalReviews == '0' ? Colors.grey[400] : Colors.amber,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        totalReviews == '0' ? 'New' : rating,
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          fontWeight: FontWeight.w500,
+                                          color: totalReviews == '0' ? Colors.grey[600] : null,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      if (totalReviews != '0')
                                         Text(
-                                          '$deliveryTime min',
+                                          '($totalReviews)',
                                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                             color: Colors.grey[600],
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                      const Spacer(),
+                                      // Delivery Time
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.access_time,
+                                            size: 14,
+                                            color: Colors.grey[600],
+                                          ),
+                                          const SizedBox(width: 2),
+                                          Text(
+                                            deliveryTime == 'N/A' ? deliveryTime : '$deliveryTime min',
+                                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -686,15 +693,13 @@ class RestaurantListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = restaurant['name'] ?? 'Restaurant';
-    final rating = restaurant['average_rating']?.toString() ?? '4.5';
-    final deliveryTime = restaurant['estimated_delivery_time']?.toString() ?? '30';
+    final rating = restaurant['average_rating']?.toString() ?? '0.0';
+    final deliveryTime = restaurant['estimated_delivery_time']?.toString() ?? 'N/A';
     final bannerUrl = restaurant['banner_image'];
     final logoUrl = restaurant['logo'];
     final tagline = restaurant['tagline'] ?? '';
     final cuisineType = restaurant['cuisine_type'] ?? '';
     final totalReviews = restaurant['total_reviews']?.toString() ?? '0';
-    final deliveryFee = restaurant['formatted_delivery_fee'] ?? '\$0';
-    final minimumOrder = restaurant['formatted_minimum_order'] ?? '\$0';
 
     return GestureDetector(
       onTap: () {
@@ -837,25 +842,27 @@ class RestaurantListCard extends StatelessWidget {
                     Row(
                       children: [
                         // Rating
-                        const Icon(
+                        Icon(
                           Icons.star,
                           size: 14,
-                          color: Colors.amber,
+                          color: totalReviews == '0' ? Colors.grey[400] : Colors.amber,
                         ),
                         const SizedBox(width: 2),
                         Text(
-                          rating,
+                          totalReviews == '0' ? 'New' : rating,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             fontWeight: FontWeight.w500,
+                            color: totalReviews == '0' ? Colors.grey[600] : null,
                           ),
                         ),
                         const SizedBox(width: 2),
-                        Text(
-                          '($totalReviews)',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[600],
+                        if (totalReviews != '0')
+                          Text(
+                            '($totalReviews)',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.grey[600],
+                            ),
                           ),
-                        ),
                         const SizedBox(width: 8),
                         // Delivery Time
                         Icon(
@@ -865,18 +872,9 @@ class RestaurantListCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 2),
                         Text(
-                          '$deliveryTime min',
+                          deliveryTime == 'N/A' ? deliveryTime : '$deliveryTime min',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Colors.grey[600],
-                          ),
-                        ),
-                        const Spacer(),
-                        // Delivery Fee
-                        Text(
-                          deliveryFee,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).primaryColor,
-                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],

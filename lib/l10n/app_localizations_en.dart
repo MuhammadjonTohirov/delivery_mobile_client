@@ -211,6 +211,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get removeFromCart => 'Remove from Cart';
   @override
   String get updateQuantity => 'Update Quantity';
+  @override
+  String get viewCart => 'View Cart';
+  @override
+  String get item => 'item';
+  @override
+  String get items => 'items';
+  @override
+  String viewCartWithItems(int count) => 'View Cart ($count ${count == 1 ? item : items})';
   
   // Orders
   @override

@@ -221,14 +221,14 @@ class RestaurantCard extends StatelessWidget {
     final cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
     
     // Get base URL from constants (remove /api part for media files)
-    final baseUrl = 'http://192.168.1.78:8000'; // Could be extracted from AppConstants
+    const baseUrl = 'http://192.168.1.78:8000'; // Could be extracted from AppConstants
     
     return '$baseUrl/media/$cleanPath';
   }
 
   Widget _buildImagePlaceholder(BuildContext context) {
     return Container(
-      color: Theme.of(context).colorScheme.surfaceVariant,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Center(
         child: Icon(
           Icons.restaurant,

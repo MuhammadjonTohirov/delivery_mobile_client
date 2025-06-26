@@ -4,6 +4,7 @@
 /// ```dart
 /// import 'package:your_app/shared/extensions/extensions.dart';
 /// ```
+library;
 
 // Widget styling and layout extensions
 export 'widget_extensions.dart';

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/services/api_service.dart';
 import '../bloc/cart_bloc.dart';
 import '../../../orders/presentation/bloc/orders_bloc.dart';
 
@@ -258,7 +259,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
             ),
           ),
           Text(
-            '\$${((item['price'] ?? 0.0) * (item['quantity'] ?? 1)).toStringAsFixed(2)}',
+            '\$${((double.tryParse(item['price'] ?? '0.0')?? 0.0) * (item['quantity'] ?? 1)).toStringAsFixed(2)}',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -482,7 +483,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
-  void _applyPromoCode() {
+  Future<void> _applyPromoCode() async {
     final code = _promoCodeController.text.trim();
     if (code.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -491,21 +492,33 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return;
     }
 
-    // Mock promo code validation
-    if (code.toUpperCase() == 'SAVE5') {
-      setState(() {
-        _isPromoCodeApplied = true;
-      });
+    // Validate promo code with server
+    try {
+      final apiService = ApiService();
+      final response = await apiService.validatePromoCode(code);
+      
+      if (response.success) {
+        setState(() {
+          _isPromoCodeApplied = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Promo code applied successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.error ?? 'Invalid promo code'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Promo code applied! \$5.00 discount'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid promo code'),
+          content: Text('Failed to validate promo code'),
           backgroundColor: Colors.red,
         ),
       );
@@ -525,14 +538,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return;
     }
 
+    // Get restaurant ID from cart items
+    final restaurantId = cartState.items.isNotEmpty 
+        ? cartState.items.first['restaurant_id'] ?? 1
+        : 1;
+    
     // Create order
     context.read<OrdersBloc>().add(
       OrderCreateRequested(
-        restaurantId: 1, // Mock restaurant ID
+        restaurantId: restaurantId,
         items: cartState.items,
         deliveryAddress: {
           'address': _addressController.text.trim(),
-          'coordinates': const {'lat': 41.2995, 'lng': 69.2401}, // Mock coordinates
+          // TODO: Get user's actual location coordinates
+          'coordinates': const {'lat': 0.0, 'lng': 0.0},
         },
         notes: _notesController.text.trim().isNotEmpty 
             ? _notesController.text.trim() 

@@ -38,6 +38,13 @@ class DeliveryCustomerApp extends StatelessWidget {
   const DeliveryCustomerApp({super.key});
 
   @override
+/// Builds the main application widget tree, setting up providers and blocs
+/// for dependency injection and state management. It configures the app's
+/// themes, localization, and routing. The app is wrapped in a `MultiProvider`
+/// and `MultiBlocProvider` for managing services and application state.
+/// Returns a `MaterialApp` configured with the necessary settings for the
+/// delivery customer app.
+
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
