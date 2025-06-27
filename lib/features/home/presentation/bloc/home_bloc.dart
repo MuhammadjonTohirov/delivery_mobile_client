@@ -42,17 +42,21 @@ class HomeLoading extends HomeState {}
 
 class HomeLoaded extends HomeState {
   final List<dynamic> restaurants;
+  final List<dynamic> featuredRestaurants;
+  final List<dynamic> categories;
   final List<dynamic> promotions;
   final UserLocation? currentLocation;
 
   const HomeLoaded({
     required this.restaurants,
+    required this.featuredRestaurants,
+    required this.categories,
     required this.promotions,
     this.currentLocation,
   });
 
   @override
-  List<Object> get props => [restaurants, promotions];
+  List<Object> get props => [restaurants, featuredRestaurants, categories, promotions];
 }
 
 class HomeError extends HomeState {
@@ -129,26 +133,40 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         );
       }
 
-      // Load restaurants and promotions in parallel
+      // Load all data in parallel
       final results = await Future.wait([
         apiService.getRestaurants(
           latitude: latitude,
           longitude: longitude,
         ),
+        apiService.getFeaturedRestaurants(
+          latitude: latitude,
+          longitude: longitude,
+        ),
+        apiService.getCategories(),
         apiService.getPromotions(),
       ]);
 
       final restaurantsResponse = results[0];
-      final promotionsResponse = results[1];
+      final featuredRestaurantsResponse = results[1];
+      final categoriesResponse = results[2];
+      final promotionsResponse = results[3];
 
-      if (restaurantsResponse.success && promotionsResponse.success) {
+      if (restaurantsResponse.success && 
+          featuredRestaurantsResponse.success &&
+          categoriesResponse.success &&
+          promotionsResponse.success) {
         emit(HomeLoaded(
           restaurants: restaurantsResponse.data ?? [],
+          featuredRestaurants: featuredRestaurantsResponse.data ?? [],
+          categories: categoriesResponse.data ?? [],
           promotions: promotionsResponse.data ?? [],
           currentLocation: currentLocation,
         ));
       } else {
         final errorMessage = restaurantsResponse.error ?? 
+                           featuredRestaurantsResponse.error ??
+                           categoriesResponse.error ??
                            promotionsResponse.error ?? 
                            'Failed to load home data';
         emit(HomeError(message: errorMessage));

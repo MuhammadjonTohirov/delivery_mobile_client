@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/services/language_service.dart';
+import '../../../../core/blocs/language_cubit.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../bloc/auth_bloc.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/auth_button.dart';
@@ -17,6 +20,20 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  String _currentLanguage = 'en';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentLanguage();
+  }
+
+  Future<void> _loadCurrentLanguage() async {
+    final language = await LanguageService.getLanguage();
+    setState(() {
+      _currentLanguage = language;
+    });
+  }
 
   @override
   void dispose() {
@@ -38,8 +55,94 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          // Language Selection Button
+          Container(
+            margin: const EdgeInsets.only(right: 16, top: 8),
+            child: PopupMenuButton<String>(
+              icon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    LanguageService.getLanguageFlag(_currentLanguage),
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _currentLanguage.toUpperCase(),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.keyboard_arrow_down,
+                    size: 16,
+                    color: Theme.of(context).textTheme.bodySmall?.color,
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              onSelected: (String languageCode) async {
+                context.read<LanguageCubit>().changeLanguage(languageCode);
+                setState(() {
+                  _currentLanguage = languageCode;
+                });
+              },
+              itemBuilder: (BuildContext context) => [
+                PopupMenuItem<String>(
+                  value: 'en',
+                  child: Row(
+                    children: [
+                      const Text('🇺🇸', style: TextStyle(fontSize: 20)),
+                      const SizedBox(width: 12),
+                      Text(l10n.english),
+                      if (_currentLanguage == 'en')...[
+                        const Spacer(),
+                        Icon(Icons.check, color: Theme.of(context).primaryColor, size: 18),
+                      ],
+                    ],
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'ru',
+                  child: Row(
+                    children: [
+                      const Text('🇷🇺', style: TextStyle(fontSize: 20)),
+                      const SizedBox(width: 12),
+                      Text(l10n.russian),
+                      if (_currentLanguage == 'ru')...[
+                        const Spacer(),
+                        Icon(Icons.check, color: Theme.of(context).primaryColor, size: 18),
+                      ],
+                    ],
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'uz',
+                  child: Row(
+                    children: [
+                      const Text('🇺🇿', style: TextStyle(fontSize: 20)),
+                      const SizedBox(width: 12),
+                      Text(l10n.uzbek),
+                      if (_currentLanguage == 'uz')...[
+                        const Spacer(),
+                        Icon(Icons.check, color: Theme.of(context).primaryColor, size: 18),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
@@ -82,14 +185,14 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         const SizedBox(height: 24),
                         Text(
-                          'Welcome Back!',
+                          l10n.loginTitle,
                           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Sign in to continue',
+                          l10n.loginSubtitle,
                           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             color: Theme.of(context).textTheme.bodySmall?.color,
                           ),
@@ -104,15 +207,15 @@ class _LoginPageState extends State<LoginPage> {
                   AuthTextField(
                     controller: _emailController,
                     label: 'Email',
-                    hintText: 'Enter your email',
+                    hintText: l10n.enterEmail,
                     keyboardType: TextInputType.emailAddress,
                     prefixIcon: Icons.email_outlined,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
+                        return l10n.emailRequired;
                       }
                       if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                        return 'Please enter a valid email';
+                        return l10n.emailInvalid;
                       }
                       return null;
                     },
@@ -124,7 +227,7 @@ class _LoginPageState extends State<LoginPage> {
                   AuthTextField(
                     controller: _passwordController,
                     label: 'Password',
-                    hintText: 'Enter your password',
+                    hintText: l10n.enterPassword,
                     obscureText: _obscurePassword,
                     prefixIcon: Icons.lock_outlined,
                     suffixIcon: IconButton(
@@ -139,7 +242,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
+                        return l10n.passwordRequired;
                       }
                       if (value.length < 3) {
                         return 'Password must be at least 6 characters';
@@ -155,12 +258,7 @@ class _LoginPageState extends State<LoginPage> {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () {
-                        // TODO: Implement forgot password
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Forgot password feature coming soon!'),
-                          ),
-                        );
+                        AppRouter.push(context, AppRouter.forgotPassword);
                       },
                       child: const Text('Forgot Password?'),
                     ),
@@ -172,7 +270,7 @@ class _LoginPageState extends State<LoginPage> {
                   BlocBuilder<AuthBloc, AuthState>(
                     builder: (context, state) {
                       return AuthButton(
-                        text: 'Sign In',
+                        text: l10n.signIn,
                         onPressed: _login,
                         isLoading: state is AuthLoading,
                       );
@@ -222,14 +320,14 @@ class _LoginPageState extends State<LoginPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        "Don't have an account? ",
+                        l10n.dontHaveAccount,
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       TextButton(
                         onPressed: () {
                           AppRouter.pushReplacement(context, AppRouter.register);
                         },
-                        child: const Text('Sign Up'),
+                        child: Text(l10n.signUp),
                       ),
                     ],
                   ),

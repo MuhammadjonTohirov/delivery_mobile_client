@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../shared/widgets/cart/cart_wrapper.dart';
+import '../../../../shared/widgets/states/empty_state_widget.dart';
+import '../../../../shared/widgets/states/error_state_widget.dart';
+import '../../../../shared/utils/formatters/currency_formatter.dart';
 import '../bloc/cart_bloc.dart';
 
 class CartPage extends StatefulWidget {
@@ -19,7 +23,9 @@ class _CartPageState extends State<CartPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return CartWrapper(
+      showCartButton: false, // Don't show cart button on cart page
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Your Cart'),
         actions: [
@@ -45,34 +51,23 @@ class _CartPageState extends State<CartPage> {
               child: CircularProgressIndicator(),
             );
           } else if (state is CartError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    state.message,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<CartBloc>().add(CartLoadRequested());
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
+            return ErrorStateWidget(
+              message: state.message,
+              onRetry: () {
+                context.read<CartBloc>().add(CartLoadRequested());
+              },
             );
           } else if (state is CartLoaded) {
             if (state.items.isEmpty) {
-              return _buildEmptyCart();
+              return EmptyStateWidget(
+                icon: Icons.shopping_cart_outlined,
+                title: 'Your cart is empty',
+                subtitle: 'Add some delicious items to get started',
+                actionText: 'Browse Restaurants',
+                onActionPressed: () {
+                  Navigator.of(context).pop();
+                },
+              );
             }
             return _buildCartContent(state);
           }
@@ -87,44 +82,10 @@ class _CartPageState extends State<CartPage> {
           return const SizedBox.shrink();
         },
       ),
-    );
-  }
-
-  Widget _buildEmptyCart() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.shopping_cart_outlined,
-            size: 120,
-            color: Theme.of(context).dividerColor,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Your cart is empty',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Theme.of(context).textTheme.bodySmall?.color,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Add some delicious items to get started',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).textTheme.bodySmall?.color,
-            ),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: const Text('Browse Restaurants'),
-          ),
-        ],
       ),
     );
   }
+
 
   Widget _buildCartContent(CartLoaded state) {
     return Column(
@@ -185,7 +146,7 @@ class _CartPageState extends State<CartPage> {
                     ),
                   const SizedBox(height: 8),
                   Text(
-                    '\$${(item['price'] ?? 0.0).toStringAsFixed(2)}',
+                    CurrencyFormatter.formatUSD(double.tryParse(item['price'] ?? '0.0')?? 0.0),
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: Theme.of(context).primaryColor,
                       fontWeight: FontWeight.bold,
@@ -310,7 +271,7 @@ class _CartPageState extends State<CartPage> {
                 : Theme.of(context).textTheme.bodyMedium,
           ),
           Text(
-            '\$${amount.toStringAsFixed(2)}',
+            CurrencyFormatter.formatUSD(amount),
             style: isTotal
                 ? Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
@@ -330,7 +291,7 @@ class _CartPageState extends State<CartPage> {
         onPressed: () {
           AppRouter.push(context, AppRouter.checkout);
         },
-        child: Text('Proceed to Checkout • \$${state.total.toStringAsFixed(2)}'),
+        child: Text('Proceed to Checkout • ${CurrencyFormatter.formatUSD(state.total)}'),
       ),
     );
   }

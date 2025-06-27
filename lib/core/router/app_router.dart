@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
+import '../../features/auth/presentation/pages/forgot_password_page.dart';
+import '../../features/language/presentation/pages/language_selection_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/home/presentation/pages/restaurant_details_page.dart';
+import '../../features/home/presentation/pages/restaurant_menu_items_page.dart';
 import '../../features/cart/presentation/pages/cart_page.dart';
 import '../../features/cart/presentation/pages/checkout_page.dart';
-import '../../features/orders/presentation/pages/orders_page.dart';
 import '../../features/orders/presentation/pages/order_details_page.dart';
 import '../../features/orders/presentation/pages/order_tracking_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -15,10 +17,13 @@ import '../../features/profile/presentation/pages/settings_page.dart';
 
 class AppRouter {
   static const String splash = '/';
+  static const String languageSelection = '/language-selection';
   static const String login = '/login';
   static const String register = '/register';
+  static const String forgotPassword = '/forgot-password';
   static const String home = '/home';
   static const String restaurantDetails = '/restaurant-details';
+  static const String restaurantMenuItems = '/restaurant-menu-items';
   static const String cart = '/cart';
   static const String checkout = '/checkout';
   static const String orders = '/orders';
@@ -36,6 +41,15 @@ class AppRouter {
           settings: settings,
         );
 
+      case languageSelection:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+          builder: (_) => LanguageSelectionPage(
+            isInitialSetup: args?['isInitialSetup'] ?? false,
+          ),
+          settings: settings,
+        );
+
       case login:
         return MaterialPageRoute(
           builder: (_) => const LoginPage(),
@@ -48,6 +62,12 @@ class AppRouter {
           settings: settings,
         );
 
+      case forgotPassword:
+        return MaterialPageRoute(
+          builder: (_) => const ForgotPasswordPage(),
+          settings: settings,
+        );
+
       case home:
         return MaterialPageRoute(
           builder: (_) => const HomePage(),
@@ -56,12 +76,29 @@ class AppRouter {
 
       case restaurantDetails:
         final args = settings.arguments as Map<String, dynamic>?;
-        final restaurantId = args?['restaurantId'] as int?;
+        final restaurantId = args?['restaurantId'] as String?;
         if (restaurantId == null) {
           return _errorRoute('Restaurant ID is required');
         }
         return MaterialPageRoute(
           builder: (_) => RestaurantDetailsPage(restaurantId: restaurantId),
+          settings: settings,
+        );
+
+      case restaurantMenuItems:
+        final args = settings.arguments as Map<String, dynamic>?;
+        final restaurantId = args?['restaurantId'] as String?;
+        final restaurantName = args?['restaurantName'] as String?;
+        final restaurantData = args?['restaurantData'] as Map<String, dynamic>?;
+        if (restaurantId == null || restaurantName == null) {
+          return _errorRoute('Restaurant ID and name are required');
+        }
+        return MaterialPageRoute(
+          builder: (_) => RestaurantMenuItemsPage(
+            restaurantId: restaurantId,
+            restaurantName: restaurantName,
+            restaurantData: restaurantData,
+          ),
           settings: settings,
         );
 
@@ -82,7 +119,7 @@ class AppRouter {
 
       case orderDetails:
         final args = settings.arguments as Map<String, dynamic>?;
-        final orderId = args?['orderId'] as int?;
+        final orderId = args?['orderId'] as String?;
         if (orderId == null) {
           return _errorRoute('Order ID is required');
         }
@@ -93,7 +130,7 @@ class AppRouter {
 
       case orderTracking:
         final args = settings.arguments as Map<String, dynamic>?;
-        final orderId = args?['orderId'] as int?;
+        final orderId = args?['orderId'] as String?;
         if (orderId == null) {
           return _errorRoute('Order ID is required');
         }

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import '../constants/app_constants.dart';
 import 'storage_service.dart';
 
@@ -73,9 +74,8 @@ class ApiService {
   Future<ApiResponse<Map<String, dynamic>>> register({
     required String email,
     required String password,
-    required String firstName,
-    required String lastName,
-    String? phoneNumber,
+    required String fullName,
+    String? phone,
   }) async {
     try {
       final response = await _dio.post(
@@ -83,9 +83,24 @@ class ApiService {
         data: {
           'email': email,
           'password': password,
-          'first_name': firstName,
-          'last_name': lastName,
-          if (phoneNumber != null) 'phone_number': phoneNumber,
+          'password_confirm': password,
+          'full_name': fullName,
+          if (phone != null && phone.isNotEmpty) 'phone': phone,
+          'customer_profile': {},
+        },
+      );
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> forgotPassword(String email) async {
+    try {
+      final response = await _dio.post(
+        AppConstants.forgotPasswordEndpoint,
+        data: {
+          'email': email,
         },
       );
       return ApiResponse.success(response.data);
@@ -96,9 +111,72 @@ class ApiService {
 
   Future<ApiResponse<Map<String, dynamic>>> getUserProfile() async {
     try {
-      final response = await _dio.get('/auth/profile/');
+      final response = await _dio.get(AppConstants.profileEndpoint);
       return ApiResponse.success(response.data);
     } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> updateProfile({
+    String? fullName,
+    String? phone,
+    String? email,
+  }) async {
+    try {
+      final data = <String, dynamic>{};
+      if (fullName != null) data['full_name'] = fullName;
+      if (phone != null) data['phone'] = phone;
+      if (email != null) data['email'] = email;
+      
+      final response = await _dio.patch(
+        AppConstants.profileEndpoint,
+        data: data,
+      );
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> updateProfileImage({
+    required XFile imageFile,
+  }) async {
+    try {
+      final fileName = imageFile.name.isNotEmpty ? imageFile.name : 'profile_image.jpg';
+      
+      if (kDebugMode) {
+        print('Uploading profile image: ${imageFile.path}');
+        print('File name: $fileName');
+        print('File size: ${await imageFile.length()} bytes');
+      }
+      
+      final formData = FormData.fromMap({
+        'avatar': await MultipartFile.fromFile(
+          imageFile.path,
+          filename: fileName,
+        ),
+      });
+
+      final response = await _dio.patch(
+        AppConstants.profileEndpoint,
+        data: formData,
+        options: Options(
+          contentType: 'multipart/form-data',
+        ),
+      );
+      
+      if (kDebugMode) {
+        print('Profile image upload response: ${response.data}');
+      }
+      
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('Profile image upload error: ${e.message}');
+        print('Response data: ${e.response?.data}');
+        print('Status code: ${e.response?.statusCode}');
+      }
       return ApiResponse.error(_handleError(e));
     }
   }
@@ -125,13 +203,81 @@ class ApiService {
         queryParameters: queryParams,
       );
       
-      return ApiResponse.success(response.data['results'] ?? response.data);
+      // Handle different response formats
+      if (response.data is List) {
+        return ApiResponse.success(response.data);
+      } else if (response.data is Map<String, dynamic>) {
+        final results = response.data['results'];
+        if (results is List) {
+          return ApiResponse.success(results);
+        } else {
+          return ApiResponse.success([]);
+        }
+      } else {
+        return ApiResponse.success([]);
+      }
     } on DioException catch (e) {
       return ApiResponse.error(_handleError(e));
     }
   }
 
-  Future<ApiResponse<Map<String, dynamic>>> getRestaurantDetails(int restaurantId) async {
+  Future<ApiResponse<List<dynamic>>> getFeaturedRestaurants({
+    double? latitude,
+    double? longitude,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'featured': 'true',
+        if (latitude != null) 'lat': latitude,
+        if (longitude != null) 'lng': longitude,
+      };
+
+      final response = await _dio.get(
+        AppConstants.restaurantsEndpoint,
+        queryParameters: queryParams,
+      );
+      
+      // Handle different response formats
+      if (response.data is List) {
+        return ApiResponse.success(response.data);
+      } else if (response.data is Map<String, dynamic>) {
+        final results = response.data['results'];
+        if (results is List) {
+          return ApiResponse.success(results);
+        } else {
+          return ApiResponse.success([]);
+        }
+      } else {
+        return ApiResponse.success([]);
+      }
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<List<dynamic>>> getCategories() async {
+    try {
+      final response = await _dio.get(AppConstants.categoriesEndpoint);
+      
+      // Handle different response formats
+      if (response.data is List) {
+        return ApiResponse.success(response.data);
+      } else if (response.data is Map<String, dynamic>) {
+        final results = response.data['results'];
+        if (results is List) {
+          return ApiResponse.success(results);
+        } else {
+          return ApiResponse.success([]);
+        }
+      } else {
+        return ApiResponse.success([]);
+      }
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> getRestaurantDetails(String restaurantId) async {
     try {
       final response = await _dio.get('${AppConstants.restaurantsEndpoint}$restaurantId/');
       return ApiResponse.success(response.data);
@@ -140,10 +286,23 @@ class ApiService {
     }
   }
 
-  Future<ApiResponse<List<dynamic>>> getRestaurantMenu(int restaurantId) async {
+  Future<ApiResponse<List<dynamic>>> getRestaurantMenu(String restaurantId) async {
     try {
-      final response = await _dio.get('${AppConstants.menuEndpoint}?restaurant=$restaurantId');
-      return ApiResponse.success(response.data);
+      final response = await _dio.get('${AppConstants.restaurantsEndpoint}$restaurantId/menu/');
+      
+      // Handle different response formats
+      if (response.data is List) {
+        return ApiResponse.success(response.data);
+      } else if (response.data is Map<String, dynamic>) {
+        final results = response.data['results'];
+        if (results is List) {
+          return ApiResponse.success(results);
+        } else {
+          return ApiResponse.success([]);
+        }
+      } else {
+        return ApiResponse.success([]);
+      }
     } on DioException catch (e) {
       return ApiResponse.error(_handleError(e));
     }
@@ -165,6 +324,128 @@ class ApiService {
         AppConstants.searchEndpoint,
         queryParameters: queryParams,
       );
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> getMenuItems({
+    String? restaurantId,
+    String? query,
+    String? category,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'page_size': pageSize,
+        if (restaurantId != null) 'restaurant': restaurantId,
+        if (query != null && query.isNotEmpty) 'search': query,
+        if (category != null && category.isNotEmpty) 'category': category,
+        'is_available': 'true',
+      };
+
+      final response = await _dio.get(
+        AppConstants.menuItemsEndpoint,
+        queryParameters: queryParams,
+      );
+      
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> searchMenuItems({
+    String? query,
+    String? category,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    return getMenuItems(
+      query: query,
+      category: category,
+      page: page,
+      pageSize: pageSize,
+    );
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> getMenuItemDetails(String itemId) async {
+    try {
+      final response = await _dio.get('${AppConstants.menuItemsEndpoint}$itemId/');
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  // Cart endpoints
+  Future<ApiResponse<Map<String, dynamic>>> getCart() async {
+    try {
+      final response = await _dio.get(AppConstants.cartEndpoint);
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> addToCart({
+    required String menuItemId,
+    required int quantity,
+    String? notes,
+    List<String>? selectedOptions,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '${AppConstants.cartEndpoint}add/',
+        data: {
+          'menu_item_id': menuItemId,
+          'quantity': quantity,
+          if (notes != null) 'notes': notes,
+          if (selectedOptions != null) 'selected_options': selectedOptions,
+        },
+      );
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> updateCartItem({
+    required String cartItemId,
+    required int quantity,
+    String? notes,
+    List<String>? selectedOptions,
+  }) async {
+    try {
+      final response = await _dio.patch(
+        '${AppConstants.cartEndpoint}$cartItemId/',
+        data: {
+          'quantity': quantity,
+          if (notes != null) 'notes': notes,
+          if (selectedOptions != null) 'selected_options': selectedOptions,
+        },
+      );
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> removeFromCart(String cartItemId) async {
+    try {
+      final response = await _dio.delete('${AppConstants.cartEndpoint}$cartItemId/');
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> clearCart() async {
+    try {
+      final response = await _dio.delete('${AppConstants.cartEndpoint}clear/');
       return ApiResponse.success(response.data);
     } on DioException catch (e) {
       return ApiResponse.error(_handleError(e));
@@ -208,9 +489,18 @@ class ApiService {
     }
   }
 
-  Future<ApiResponse<Map<String, dynamic>>> getOrderDetails(int orderId) async {
+  Future<ApiResponse<Map<String, dynamic>>> getOrderDetails(dynamic orderId) async {
     try {
       final response = await _dio.get('${AppConstants.ordersEndpoint}$orderId/');
+      return ApiResponse.success(response.data);
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
+  Future<ApiResponse<Map<String, dynamic>>> trackOrder(String orderId) async {
+    try {
+      final response = await _dio.get('${AppConstants.ordersEndpoint}$orderId/track/');
       return ApiResponse.success(response.data);
     } on DioException catch (e) {
       return ApiResponse.error(_handleError(e));
@@ -221,7 +511,20 @@ class ApiService {
   Future<ApiResponse<List<dynamic>>> getPromotions() async {
     try {
       final response = await _dio.get(AppConstants.promotionsEndpoint);
-      return ApiResponse.success(response.data);
+      
+      // Handle different response formats
+      if (response.data is List) {
+        return ApiResponse.success(response.data);
+      } else if (response.data is Map<String, dynamic>) {
+        final results = response.data['results'];
+        if (results is List) {
+          return ApiResponse.success(results);
+        } else {
+          return ApiResponse.success([]);
+        }
+      } else {
+        return ApiResponse.success([]);
+      }
     } on DioException catch (e) {
       return ApiResponse.error(_handleError(e));
     }
@@ -240,6 +543,41 @@ class ApiService {
   }
 
   // Reviews endpoints
+  Future<ApiResponse<List<dynamic>>> getRestaurantReviews(
+    String restaurantId, {
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'restaurant': restaurantId,
+        'page': page,
+        'page_size': pageSize,
+      };
+
+      final response = await _dio.get(
+        AppConstants.reviewsEndpoint,
+        queryParameters: queryParams,
+      );
+      
+      // Handle different response formats
+      if (response.data is List) {
+        return ApiResponse.success(response.data);
+      } else if (response.data is Map<String, dynamic>) {
+        final results = response.data['results'];
+        if (results is List) {
+          return ApiResponse.success(results);
+        } else {
+          return ApiResponse.success([]);
+        }
+      } else {
+        return ApiResponse.success([]);
+      }
+    } on DioException catch (e) {
+      return ApiResponse.error(_handleError(e));
+    }
+  }
+
   Future<ApiResponse<Map<String, dynamic>>> submitReview({
     required int restaurantId,
     required int orderId,
