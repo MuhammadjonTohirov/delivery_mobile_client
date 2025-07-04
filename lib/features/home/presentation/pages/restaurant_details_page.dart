@@ -249,9 +249,9 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> {
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 if (_menuItems.isEmpty) {
-                  return SizedBox(
+                  return const SizedBox(
                     height: 200,
-                    child: const Center(
+                    child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
