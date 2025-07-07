@@ -197,7 +197,7 @@ class _MenuItemDetailsPageState extends State<MenuItemDetailsPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      CurrencyFormatter.formatUSD(price),
+                      _formatCurrency(price),
                       style: theme.textTheme.titleLarge?.copyWith(
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.w600,
@@ -310,7 +310,7 @@ class _MenuItemDetailsPageState extends State<MenuItemDetailsPage> {
             return CheckboxListTile(
               title: Text(option['name'] ?? ''),
               subtitle: option['extra_price'] != null && option['extra_price'] > 0
-                  ? Text('+${CurrencyFormatter.formatUSD(option['extra_price'].toDouble())}')
+                  ? Text('+${_formatCurrency(option['extra_price'].toDouble())}')
                   : null,
               value: isSelected,
               onChanged: (bool? value) {
@@ -431,7 +431,7 @@ class _MenuItemDetailsPageState extends State<MenuItemDetailsPage> {
                 ),
                 child: Text(
                   isAvailable 
-                      ? 'Add to Cart • ${CurrencyFormatter.formatUSD(totalPrice)}'
+                      ? 'Add to Cart • ${_formatCurrency(totalPrice)}'
                       : 'Out of Stock',
                   style: const TextStyle(
                     fontSize: 16,
@@ -467,5 +467,22 @@ class _MenuItemDetailsPageState extends State<MenuItemDetailsPage> {
     
     // Go back to previous screen
     Navigator.of(context).pop();
+  }
+
+  String _formatCurrency(double amount) {
+    // Try to get currency info from the menu item
+    final currencyCode = _menuItem?['currency_code'] as String?;
+    final currencySymbol = _menuItem?['currency_symbol'] as String?;
+    
+    if (currencyCode != null || currencySymbol != null) {
+      return CurrencyFormatter.formatWithCurrency(
+        amount,
+        currencyCode: currencyCode,
+        currencySymbol: currencySymbol,
+      );
+    }
+    
+    // Fallback to USD if no currency info available
+    return CurrencyFormatter.formatUSD(amount);
   }
 }

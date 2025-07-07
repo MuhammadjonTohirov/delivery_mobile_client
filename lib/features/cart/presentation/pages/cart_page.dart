@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../shared/widgets/cart/cart_wrapper.dart';
 import '../../../../shared/widgets/states/empty_state_widget.dart';
 import '../../../../shared/widgets/states/error_state_widget.dart';
 import '../../../../shared/utils/formatters/currency_formatter.dart';
@@ -23,9 +22,7 @@ class _CartPageState extends State<CartPage> {
 
   @override
   Widget build(BuildContext context) {
-    return CartWrapper(
-      showCartButton: false, // Don't show cart button on cart page
-      child: Scaffold(
+    return Scaffold(
       appBar: AppBar(
         title: const Text('Your Cart'),
         actions: [
@@ -81,7 +78,6 @@ class _CartPageState extends State<CartPage> {
           }
           return const SizedBox.shrink();
         },
-      ),
       ),
     );
   }
@@ -146,7 +142,7 @@ class _CartPageState extends State<CartPage> {
                     ),
                   const SizedBox(height: 8),
                   Text(
-                    CurrencyFormatter.formatUSD(double.tryParse(item['price'] ?? '0.0')?? 0.0),
+                    _formatCurrency(_parsePrice(item['price']), item),
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: Theme.of(context).primaryColor,
                       fontWeight: FontWeight.bold,
@@ -317,5 +313,33 @@ class _CartPageState extends State<CartPage> {
         ],
       ),
     );
+  }
+
+  String _formatCurrency(double amount, Map<String, dynamic> item) {
+    // Try to get currency info from the item
+    final currencyCode = item['currency_code'] as String?;
+    final currencySymbol = item['currency_symbol'] as String?;
+    
+    if (currencyCode != null || currencySymbol != null) {
+      return CurrencyFormatter.formatWithCurrency(
+        amount,
+        currencyCode: currencyCode,
+        currencySymbol: currencySymbol,
+      );
+    }
+    
+    // Fallback to USD if no currency info available
+    return CurrencyFormatter.formatUSD(amount);
+  }
+
+  double _parsePrice(dynamic priceValue) {
+    if (priceValue is double) {
+      return priceValue;
+    } else if (priceValue is int) {
+      return priceValue.toDouble();
+    } else if (priceValue is String) {
+      return double.tryParse(priceValue) ?? 0.0;
+    }
+    return 0.0;
   }
 }

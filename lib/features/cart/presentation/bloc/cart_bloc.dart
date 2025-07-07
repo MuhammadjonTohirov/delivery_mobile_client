@@ -252,6 +252,8 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     Emitter<CartState> emit,
   ) async {
     try {
+      emit(CartLoading());
+      
       final response = await _apiService.addToCart(
         menuItemId: event.menuItemId,
         quantity: event.quantity,
@@ -261,7 +263,34 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       
       if (response.success) {
         // Reload cart after successful addition
-        add(CartLoadRequested());
+        final cartResponse = await _apiService.getCart();
+        
+        if (cartResponse.success && cartResponse.data != null) {
+          final cartData = cartResponse.data!;
+          final serverItems = cartData['items'] as List<dynamic>? ?? [];
+          
+          emit(CartLoaded(
+            items: serverItems.cast<Map<String, dynamic>>(),
+            subtotal: (cartData['subtotal'] ?? 0.0).toDouble(),
+            deliveryFee: (cartData['delivery_fee'] ?? 0.0).toDouble(),
+            tax: (cartData['tax'] ?? 0.0).toDouble(),
+            total: (cartData['total'] ?? 0.0).toDouble(),
+            itemCount: (cartData['item_count'] ?? 0) as int,
+          ));
+        } else {
+          // Fallback to local storage
+          final items = StorageService.getCartData();
+          final calculations = _calculateTotals(items);
+          
+          emit(CartLoaded(
+            items: items,
+            subtotal: calculations['subtotal']!,
+            deliveryFee: calculations['deliveryFee']!,
+            tax: calculations['tax']!,
+            total: calculations['total']!,
+            itemCount: calculations['itemCount']!.toInt(),
+          ));
+        }
       } else {
         emit(CartError(message: response.error ?? 'Failed to add item to cart'));
       }
@@ -387,8 +416,29 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     int itemCount = 0;
     
     for (final item in items) {
-      final price = (double.tryParse(item['price'] ?? '0.0')?? 0.0).toDouble();
-      final quantity = (item['quantity'] ?? 1) as int;
+      // Handle both string and double price values
+      final priceValue = item['price'];
+      double price = 0.0;
+      
+      if (priceValue is double) {
+        price = priceValue;
+      } else if (priceValue is int) {
+        price = priceValue.toDouble();
+      } else if (priceValue is String) {
+        price = double.tryParse(priceValue) ?? 0.0;
+      }
+      
+      final quantityValue = item['quantity'];
+      int quantity = 1;
+      
+      if (quantityValue is int) {
+        quantity = quantityValue;
+      } else if (quantityValue is double) {
+        quantity = quantityValue.toInt();
+      } else if (quantityValue is String) {
+        quantity = int.tryParse(quantityValue) ?? 1;
+      }
+      
       subtotal += price * quantity;
       itemCount += quantity;
     }

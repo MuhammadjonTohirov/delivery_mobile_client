@@ -114,7 +114,7 @@ class FloatingCartButton extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                CurrencyFormatter.formatUSD(state.total),
+                                _formatCurrency(state.total, state.items),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
@@ -149,5 +149,25 @@ class FloatingCartButton extends StatelessWidget {
         return const SizedBox.shrink();
       },
     );
+  }
+
+  String _formatCurrency(double amount, List<Map<String, dynamic>> items) {
+    // Try to get currency info from the first item
+    if (items.isNotEmpty) {
+      final firstItem = items.first;
+      final currencyCode = firstItem['currency_code'] as String?;
+      final currencySymbol = firstItem['currency_symbol'] as String?;
+      
+      if (currencyCode != null || currencySymbol != null) {
+        return CurrencyFormatter.formatWithCurrency(
+          amount,
+          currencyCode: currencyCode,
+          currencySymbol: currencySymbol,
+        );
+      }
+    }
+    
+    // Fallback to USD if no currency info available
+    return CurrencyFormatter.formatUSD(amount);
   }
 }

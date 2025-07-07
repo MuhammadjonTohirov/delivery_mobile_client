@@ -1,6 +1,6 @@
 class AppConstants {
   static const String appName = 'Delivery Customer';
-  static const String baseUrl = 'http://192.168.1.78:8000/api';
+  static const String baseUrl = 'http://192.168.1.70:8000/api';
   
   // API Endpoints
   static const String loginEndpoint = '/auth/token/';

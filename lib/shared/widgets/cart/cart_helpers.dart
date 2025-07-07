@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/models.dart';
-import 'menu_item_detail_modal.dart';
+import '../../../core/router/app_router.dart';
 
 class CartHelpers {
-  /// Show menu item detail modal for adding to cart
+  /// Navigate to menu item detail page for adding to cart
   static Future<void> showMenuItemModal(
     BuildContext context,
     MenuItem menuItem,
   ) async {
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => MenuItemDetailModal(menuItem: menuItem),
+    await AppRouter.push(
+      context,
+      AppRouter.menuItemDetails,
+      arguments: {
+        'itemId': menuItem.id,
+        'initialData': menuItem.toJson(),
+      },
     );
   }
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../features/cart/presentation/bloc/cart_bloc.dart';
-import 'floating_cart_button.dart';
+import 'cart_bottom_bar.dart';
 
 class CartWrapper extends StatefulWidget {
   final Widget child;
@@ -34,9 +34,9 @@ class _CartWrapperState extends State<CartWrapper> {
         children: [
           // Main content
           widget.child,
-          // Floating cart button
+          // Cart bottom bar
           if (widget.showCartButton)
-            const FloatingCartButton(),
+            const CartBottomBar(),
         ],
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import '../../../core/models/models.dart';
 
 class CurrencyFormatter {
   static final NumberFormat _usdFormatter = NumberFormat.currency(
@@ -45,6 +46,11 @@ class CurrencyFormatter {
       default:
         return formatUSD(amount);
     }
+  }
+
+  /// Format amount with CurrencyInfo from server
+  static String formatWithCurrencyInfo(double amount, CurrencyInfo currencyInfo) {
+    return currencyInfo.formatPrice(amount);
   }
 
   /// Format amount with dynamic currency information from server

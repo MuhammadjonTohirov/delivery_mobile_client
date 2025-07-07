@@ -116,7 +116,7 @@ class CartItem {
   // Computed properties
   double get itemTotal => menuItem.price * quantity;
   String get restaurantId => menuItem.restaurantId;
-  String get formattedItemTotal => '\$${itemTotal.toStringAsFixed(2)}';
+  String get formattedItemTotal => menuItem.currencyInfo?.formatPrice(itemTotal) ?? '\$${itemTotal.toStringAsFixed(2)}';
   bool get hasNotes => notes != null && notes!.isNotEmpty;
   bool get hasSelectedOptions => selectedOptions.isNotEmpty;
 

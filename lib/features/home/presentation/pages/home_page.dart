@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../shared/widgets/cart/cart_wrapper.dart';
+import '../../../../core/models/models.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../search/presentation/pages/search_page.dart';
 import '../../../orders/presentation/pages/orders_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
+import '../../../cart/presentation/pages/cart_page.dart';
+import '../../../cart/presentation/bloc/cart_bloc.dart';
 import '../bloc/home_bloc.dart';
 import 'category_results_page.dart';
 import 'restaurant_details_page.dart';
@@ -23,50 +25,95 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = [
     const HomeTab(),
     const SearchPage(),
+    const CartPage(),
     const OrdersPage(),
     const ProfilePage(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return CartWrapper(
-      child: Scaffold(
-        body: IndexedStack(
-          index: _currentIndex,
-          children: _pages,
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.search_outlined),
-              activeIcon: Icon(Icons.search),
-              label: 'Search',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long_outlined),
-              activeIcon: Icon(Icons.receipt_long),
-              label: 'Orders',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outlined),
-              activeIcon: Icon(Icons.person),
-              label: 'Profile',
-            ),
-          ],
-        ),
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _pages,
       ),
+        bottomNavigationBar: BlocBuilder<CartBloc, CartState>(
+          builder: (context, cartState) {
+            return BottomNavigationBar(
+              type: BottomNavigationBarType.fixed,
+              currentIndex: _currentIndex,
+              onTap: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
+              items: [
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined),
+                  activeIcon: Icon(Icons.home),
+                  label: 'Home',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.search_outlined),
+                  activeIcon: Icon(Icons.search),
+                  label: 'Search',
+                ),
+                BottomNavigationBarItem(
+                  icon: _buildCartIcon(cartState, false),
+                  activeIcon: _buildCartIcon(cartState, true),
+                  label: 'Cart',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.receipt_long_outlined),
+                  activeIcon: Icon(Icons.receipt_long),
+                  label: 'Orders',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outlined),
+                  activeIcon: Icon(Icons.person),
+                  label: 'Profile',
+                ),
+              ],
+            );
+          },
+        ),
+    );
+  }
+
+  Widget _buildCartIcon(CartState cartState, bool isActive) {
+    final itemCount = cartState is CartLoaded ? cartState.itemCount : 0;
+    
+    return Stack(
+      children: [
+        Icon(
+          isActive ? Icons.shopping_cart : Icons.shopping_cart_outlined,
+        ),
+        if (itemCount > 0)
+          Positioned(
+            right: -2,
+            top: -2,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              constraints: const BoxConstraints(
+                minWidth: 18,
+                minHeight: 18,
+              ),
+              child: Text(
+                itemCount > 99 ? '99+' : '$itemCount',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -240,7 +287,7 @@ class SearchBarWidget extends StatelessWidget {
 }
 
 class CategoriesSection extends StatelessWidget {
-  final List<dynamic> categories;
+  final List<Category> categories;
   const CategoriesSection({super.key, required this.categories});
 
   IconData _getCategoryIcon(String name) {
@@ -276,15 +323,14 @@ class CategoriesSection extends StatelessWidget {
                 itemCount: categories.length,
                 itemBuilder: (context, index) {
                   final category = categories[index];
-                  final categoryName = category['name'] ?? 'Category';
                   
                   return GestureDetector(
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => CategoryResultsPage(
-                            categoryId: category['id']?.toString(),
-                            categoryName: categoryName,
+                            categoryId: category.id,
+                            categoryName: category.name,
                           ),
                         ),
                       );
@@ -308,15 +354,32 @@ class CategoriesSection extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            child: Icon(
-                              _getCategoryIcon(categoryName),
-                              size: 35,
-                              color: Theme.of(context).primaryColor,
-                            ),
+                            child: category.image != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Image.network(
+                                    category.image!,
+                                    width: 75,
+                                    height: 75,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Icon(
+                                        _getCategoryIcon(category.name),
+                                        size: 35,
+                                        color: Theme.of(context).primaryColor,
+                                      );
+                                    },
+                                  ),
+                                )
+                              : Icon(
+                                  _getCategoryIcon(category.name),
+                                  size: 35,
+                                  color: Theme.of(context).primaryColor,
+                                ),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            categoryName,
+                            category.name,
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),

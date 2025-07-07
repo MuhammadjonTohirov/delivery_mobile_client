@@ -1,3 +1,5 @@
+import 'models.dart';
+
 class MenuItem {
   final String id;
   final String name;
@@ -13,8 +15,7 @@ class MenuItem {
   final int? preparationTime;
   final DateTime? createdAt;
   final DateTime? updatedAt;
-  final String? currencyCode;
-  final String? currencySymbol;
+  final CurrencyInfo? currencyInfo;
 
   const MenuItem({
     required this.id,
@@ -31,8 +32,7 @@ class MenuItem {
     this.preparationTime,
     this.createdAt,
     this.updatedAt,
-    this.currencyCode,
-    this.currencySymbol,
+    this.currencyInfo,
   });
 
   factory MenuItem.fromJson(Map<String, dynamic> json) {
@@ -51,8 +51,14 @@ class MenuItem {
       preparationTime: json['preparation_time'] as int?,
       createdAt: _parseDateTime(json['created_at']),
       updatedAt: _parseDateTime(json['updated_at']),
-      currencyCode: json['currency_code']?.toString() ?? json['currency']?.toString(),
-      currencySymbol: json['currency_symbol']?.toString(),
+      currencyInfo: json['currency_info'] != null 
+        ? CurrencyInfo.fromJson(json['currency_info'])
+        : (json['currency_code'] != null || json['currency_symbol'] != null)
+            ? CurrencyInfo(
+                code: json['currency_code']?.toString() ?? 'USD',
+                symbol: json['currency_symbol']?.toString() ?? '\$',
+              )
+            : null,
     );
   }
 
@@ -72,8 +78,7 @@ class MenuItem {
       'preparation_time': preparationTime,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
-      'currency_code': currencyCode,
-      'currency_symbol': currencySymbol,
+      'currency_info': currencyInfo?.toJson(),
     };
   }
 
@@ -129,46 +134,12 @@ class MenuItem {
   bool get hasImage => image != null && image!.isNotEmpty;
   bool get hasOptions => options.isNotEmpty;
   String get formattedPrice {
-    // Import the CurrencyFormatter here
-    return _formatPrice(price, currencyCode: currencyCode, currencySymbol: currencySymbol);
+    if (currencyInfo != null) {
+      return currencyInfo!.formatPrice(price);
+    }
+    return CurrencyInfo(code: 'USD', symbol: '\$').formatPrice(price);
   }
   
-  // Helper method for formatting price with currency
-  static String _formatPrice(double amount, {String? currencyCode, String? currencySymbol}) {
-    if (currencySymbol != null) {
-      // If we have exact symbol from server, use it with proper decimal places
-      final decimals = _getDecimalDigitsForCurrency(currencyCode);
-      return '$currencySymbol${amount.toStringAsFixed(decimals)}';
-    } else if (currencyCode != null) {
-      switch (currencyCode.toUpperCase()) {
-        case 'USD':
-          return '\$${amount.toStringAsFixed(2)}';
-        case 'RUB':
-          return '₽${amount.toStringAsFixed(2)}';
-        case 'UZS':
-          return '${amount.toStringAsFixed(0)} сўм';
-        case 'EUR':
-          return '€${amount.toStringAsFixed(2)}';
-        case 'GBP':
-          return '£${amount.toStringAsFixed(2)}';
-        default:
-          return '$currencyCode ${amount.toStringAsFixed(2)}';
-      }
-    }
-    return '\$${amount.toStringAsFixed(2)}'; // fallback
-  }
-  
-  // Helper method to get decimal digits for currency
-  static int _getDecimalDigitsForCurrency(String? currencyCode) {
-    if (currencyCode == null) return 2;
-    
-    switch (currencyCode.toUpperCase()) {
-      case 'UZS':
-        return 0;
-      default:
-        return 2;
-    }
-  }
   
   // Create a copy with modified fields
   MenuItem copyWith({
@@ -186,8 +157,7 @@ class MenuItem {
     int? preparationTime,
     DateTime? createdAt,
     DateTime? updatedAt,
-    String? currencyCode,
-    String? currencySymbol,
+    CurrencyInfo? currencyInfo,
   }) {
     return MenuItem(
       id: id ?? this.id,
@@ -204,8 +174,7 @@ class MenuItem {
       preparationTime: preparationTime ?? this.preparationTime,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      currencyCode: currencyCode ?? this.currencyCode,
-      currencySymbol: currencySymbol ?? this.currencySymbol,
+      currencyInfo: currencyInfo ?? this.currencyInfo,
     );
   }
 
@@ -231,8 +200,7 @@ class MenuItemOption {
   final String? description;
   final bool isRequired;
   final int maxSelections;
-  final String? currencyCode;
-  final String? currencySymbol;
+  final CurrencyInfo? currencyInfo;
 
   const MenuItemOption({
     required this.id,
@@ -241,8 +209,7 @@ class MenuItemOption {
     this.description,
     this.isRequired = false,
     this.maxSelections = 1,
-    this.currencyCode,
-    this.currencySymbol,
+    this.currencyInfo,
   });
 
   factory MenuItemOption.fromJson(Map<String, dynamic> json) {
@@ -253,8 +220,14 @@ class MenuItemOption {
       description: json['description']?.toString(),
       isRequired: json['is_required'] ?? json['required'] ?? false,
       maxSelections: json['max_selections'] ?? json['max'] ?? 1,
-      currencyCode: json['currency_code']?.toString() ?? json['currency']?.toString(),
-      currencySymbol: json['currency_symbol']?.toString(),
+      currencyInfo: json['currency_info'] != null 
+        ? CurrencyInfo.fromJson(json['currency_info'])
+        : (json['currency_code'] != null || json['currency_symbol'] != null)
+            ? CurrencyInfo(
+                code: json['currency_code']?.toString() ?? 'USD',
+                symbol: json['currency_symbol']?.toString() ?? '\$',
+              )
+            : null,
     );
   }
 
@@ -270,15 +243,14 @@ class MenuItemOption {
       'description': description,
       'is_required': isRequired,
       'max_selections': maxSelections,
-      'currency_code': currencyCode,
-      'currency_symbol': currencySymbol,
+      'currency_info': currencyInfo?.toJson(),
     };
   }
 
   bool get hasAdditionalCost => price > 0;
   String get formattedPrice {
     if (price <= 0) return '';
-    final formatted = MenuItem._formatPrice(price, currencyCode: currencyCode, currencySymbol: currencySymbol);
+    final formatted = currencyInfo?.formatPrice(price) ?? CurrencyInfo(code: 'USD', symbol: '\$').formatPrice(price);
     return '+$formatted';
   }
 

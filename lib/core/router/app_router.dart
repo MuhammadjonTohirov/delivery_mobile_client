@@ -14,6 +14,7 @@ import '../../features/orders/presentation/pages/order_tracking_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/addresses_page.dart';
 import '../../features/profile/presentation/pages/settings_page.dart';
+import '../../features/home/presentation/pages/menu_item_details_page.dart';
 
 class AppRouter {
   static const String splash = '/';
@@ -32,6 +33,7 @@ class AppRouter {
   static const String profile = '/profile';
   static const String addresses = '/addresses';
   static const String settings = '/settings';
+  static const String menuItemDetails = '/menu-item-details';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -154,6 +156,21 @@ class AppRouter {
       case AppRouter.settings:
         return MaterialPageRoute(
           builder: (_) => const SettingsPage(),
+          settings: settings,
+        );
+
+      case menuItemDetails:
+        final args = settings.arguments as Map<String, dynamic>?;
+        final itemId = args?['itemId'] as String?;
+        final initialData = args?['initialData'] as Map<String, dynamic>?;
+        if (itemId == null) {
+          return _errorRoute('Menu item ID is required');
+        }
+        return MaterialPageRoute(
+          builder: (_) => MenuItemDetailsPage(
+            itemId: itemId,
+            initialData: initialData,
+          ),
           settings: settings,
         );
 

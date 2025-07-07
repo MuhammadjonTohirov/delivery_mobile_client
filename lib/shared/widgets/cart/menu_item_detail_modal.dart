@@ -383,7 +383,11 @@ class AddToCartButton extends StatelessWidget {
                         ),
                       )
                     : Text(
-                        'Add to Cart • ${_formatPrice(totalPrice, menuItem.currencyCode, menuItem.currencySymbol)}',
+                        'Add to Cart • ${_formatPrice(
+                          totalPrice, 
+                          menuItem.currencyInfo?.code, 
+                          menuItem.currencyInfo?.symbol
+                          )}',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

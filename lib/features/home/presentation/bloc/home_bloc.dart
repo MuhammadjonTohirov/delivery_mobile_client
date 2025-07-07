@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/services/location_service.dart';
+import '../../../../core/models/models.dart';
 
 // Events
 abstract class HomeEvent extends Equatable {
@@ -43,7 +44,7 @@ class HomeLoading extends HomeState {}
 class HomeLoaded extends HomeState {
   final List<dynamic> restaurants;
   final List<dynamic> featuredRestaurants;
-  final List<dynamic> categories;
+  final List<Category> categories;
   final List<dynamic> promotions;
   final UserLocation? currentLocation;
 
@@ -159,7 +160,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         emit(HomeLoaded(
           restaurants: restaurantsResponse.data ?? [],
           featuredRestaurants: featuredRestaurantsResponse.data ?? [],
-          categories: categoriesResponse.data ?? [],
+          categories: (categoriesResponse.data ?? []).map<Category>((json) => Category.fromJson(json)).toList(),
           promotions: promotionsResponse.data ?? [],
           currentLocation: currentLocation,
         ));
