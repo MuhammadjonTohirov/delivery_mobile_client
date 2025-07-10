@@ -1,17 +1,16 @@
 import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/app_constants.dart';
 
 class StorageService {
   static SharedPreferences? _prefs;
-  // static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
-  //   aOptions: AndroidOptions(
-  //     encryptedSharedPreferences: true,
-  //   ),
-  //   iOptions: IOSOptions(
-  //     accessibility: KeychainAccessibility.first_unlock_this_device,
-  //   ),
-  // );
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(),
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
+  );
 
   static Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
@@ -19,19 +18,19 @@ class StorageService {
 
   // Secure storage methods (for sensitive data like tokens)
   static Future<void> setSecureString(String key, String value) async {
-    // await _secureStorage.write(key: key, value: value);
+    await _secureStorage.write(key: key, value: value);
   }
 
   static Future<String?> getSecureString(String key) async {
-    // return await _secureStorage.read(key: key);
+    return await _secureStorage.read(key: key);
   }
 
   static Future<void> deleteSecureString(String key) async {
-    // await _secureStorage.delete(key: key);
+    await _secureStorage.delete(key: key);
   }
 
   static Future<void> clearSecureStorage() async {
-    // await _secureStorage.deleteAll();
+    await _secureStorage.deleteAll();
   }
 
   // Regular storage methods

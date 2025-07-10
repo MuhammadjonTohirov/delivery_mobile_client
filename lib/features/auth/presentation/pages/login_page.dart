@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/services/language_service.dart';
 import '../../../../core/blocs/language_cubit.dart';
+import '../../../../core/utils/localization_helper.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../bloc/auth_bloc.dart';
 import '../widgets/auth_text_field.dart';
@@ -245,7 +246,7 @@ class _LoginPageState extends State<LoginPage> {
                         return l10n.passwordRequired;
                       }
                       if (value.length < 3) {
-                        return 'Password must be at least 6 characters';
+                        return LocalizationHelper.passwordMinLength(context);
                       }
                       return null;
                     },
@@ -260,7 +261,7 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: () {
                         AppRouter.push(context, AppRouter.forgotPassword);
                       },
-                      child: const Text('Forgot Password?'),
+                      child: Text(LocalizationHelper.forgotPassword(context)),
                     ),
                   ),
                   
@@ -286,7 +287,7 @@ class _LoginPageState extends State<LoginPage> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
-                          'OR',
+                          LocalizationHelper.orDivider(context),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ),
@@ -301,13 +302,13 @@ class _LoginPageState extends State<LoginPage> {
                     onPressed: () {
                       // TODO: Implement Google Sign In
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Google Sign In coming soon!'),
+                        SnackBar(
+                          content: Text(LocalizationHelper.googleSignInComingSoon(context)),
                         ),
                       );
                     },
                     icon: const Icon(Icons.g_mobiledata, size: 24),
-                    label: const Text('Continue with Google'),
+                    label: Text(LocalizationHelper.continueWithGoogle(context)),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
