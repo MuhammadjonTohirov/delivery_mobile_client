@@ -15,27 +15,27 @@ dependencies:
   http: ^1.1.0
   provider: ^6.0.5
   shared_preferences: ^2.2.2
-  geolocator: ^10.1.0
-  permission_handler: ^11.0.1
+  geolocator: ^14.0.2
+  permission_handler: ^12.0.1
   cached_network_image: ^3.3.0
   flutter_rating_bar: ^4.0.1
   google_maps_flutter: ^2.5.0
   url_launcher: ^6.2.1
   image_picker: ^1.0.4
-  flutter_secure_storage: ^9.0.0
+  # flutter_secure_storage: ^10.0.0-beta.4
   dio: ^5.3.2
-  flutter_bloc: ^8.1.3
+  flutter_bloc: ^9.1.1
   equatable: ^2.0.5
   json_annotation: ^4.8.1
   intl: ^0.20.2
   flutter_svg: ^2.0.9
-  lottie: ^2.7.0
+  lottie: ^3.3.1
 # flutter_local_notifications: ^16.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
   build_runner: ^2.4.7
   json_serializable: ^6.7.1
 
@@ -43,9 +43,10 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
-    - assets/icons/
     - assets/animations/
+    - assets/fonts/
     
+  # - assets/fonts/  # Uncomment if you want to include custom fonts    
   fonts:
     - family: Poppins
       fonts:
