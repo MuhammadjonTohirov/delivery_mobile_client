@@ -1,7 +1,7 @@
 import 'package:delivery_customer/shared/extensions/widget_extensions.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/services/api_service.dart';
+import 'package:delivery_customer/core/services/api/api_service.dart';
 import '../../../../shared/widgets/chips/status_chip.dart';
 import '../../../../shared/utils/formatters/currency_formatter.dart';
 import '../../../../shared/utils/formatters/date_formatter.dart';

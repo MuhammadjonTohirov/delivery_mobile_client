@@ -1,3 +1,4 @@
+import 'package:delivery_customer/core/constants/app_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -81,10 +82,10 @@ class OptimizedNetworkImage extends StatelessWidget {
     
     // Handle relative URLs - use your API base URL
     if (url.startsWith('/')) {
-      return 'http://192.168.1.70:8000$url'; // Should come from AppConstants
+      return '${AppConstants.serverUrl}/$url'; // Should come from AppConstants
     }
     
-    return 'http://192.168.1.70:8000/media/$url';
+    return '${AppConstants.serverUrl}/media/$url';
   }
 
   String _generateCacheKey(String url) {

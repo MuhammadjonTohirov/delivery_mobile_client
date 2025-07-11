@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../constants/app_constants.dart';
+import 'package:delivery_customer/core/constants/app_constants.dart';
 
 class StorageService {
   static SharedPreferences? _prefs;
@@ -165,6 +165,33 @@ class StorageService {
       }
     }
     return [];
+  }
+
+  // Location-specific methods
+  static Future<void> setUserLocation(Map<String, dynamic> location) async {
+    await setJson(AppConstants.locationKey, location);
+    await setString(AppConstants.lastLocationUpdateKey, DateTime.now().toIso8601String());
+  }
+
+  static Map<String, dynamic>? getUserLocation() {
+    return getJson(AppConstants.locationKey);
+  }
+
+  static DateTime? getLastLocationUpdate() {
+    final updateString = getString(AppConstants.lastLocationUpdateKey);
+    if (updateString != null) {
+      try {
+        return DateTime.parse(updateString);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  static Future<void> clearUserLocation() async {
+    await remove(AppConstants.locationKey);
+    await remove(AppConstants.lastLocationUpdateKey);
   }
 
   // Logout method

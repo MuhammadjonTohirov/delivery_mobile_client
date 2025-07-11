@@ -1,7 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import '../../../../core/services/api_service.dart';
+import 'package:delivery_customer/core/services/api/api_service.dart';
 import '../../../../core/services/location_service.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../../../core/models/models.dart';
 
 // Events
@@ -113,15 +114,16 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     try {
       UserLocation? currentLocation;
       
-      // Get current location if not provided
+      // Get location if not provided
       if (latitude == null || longitude == null) {
-        final locationResult = await locationService.getCurrentLocation();
+        // Use the best available location (saved, GPS, or default)
+        final locationResult = await locationService.getBestAvailableLocation();
         if (locationResult.success && locationResult.location != null) {
           currentLocation = locationResult.location!;
           latitude = currentLocation.latitude;
           longitude = currentLocation.longitude;
         } else {
-          // Use default location if location access fails
+          // Fallback to default location
           currentLocation = locationService.getDefaultLocation();
           latitude = currentLocation.latitude;
           longitude = currentLocation.longitude;
@@ -131,7 +133,11 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
           latitude: latitude,
           longitude: longitude,
           accuracy: 0,
+          timestamp: DateTime.now(),
         );
+        
+        // Save the provided location to storage
+        await StorageService.setUserLocation(currentLocation.toJson());
       }
 
       // Load all data in parallel

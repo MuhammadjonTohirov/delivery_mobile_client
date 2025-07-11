@@ -1,7 +1,7 @@
+import 'package:delivery_customer/core/constants/app_constants.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
-import '../constants/app_constants.dart';
 import '../logger_service.dart';
 import 'base_api_service.dart';
 

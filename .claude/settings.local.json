@@ -6,7 +6,8 @@
       "Bash(rm:*)",
       "Bash(pod install:*)",
       "Bash(flutter run:*)",
-      "Bash(pod deintegrate:*)"
+      "Bash(pod deintegrate:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

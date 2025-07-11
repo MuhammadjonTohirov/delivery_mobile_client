@@ -1,6 +1,7 @@
+import 'package:delivery_customer/core/constants/app_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/services/api_service.dart';
+import 'package:delivery_customer/core/services/api/api_service.dart';
 import '../../../../shared/utils/formatters/currency_formatter.dart';
 import '../../../../shared/widgets/states/error_state_widget.dart';
 import '../../../cart/presentation/bloc/cart_bloc.dart';
@@ -168,7 +169,7 @@ class _MenuItemDetailsPageState extends State<MenuItemDetailsPage> {
     }
     
     final cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
-    return 'http://192.168.1.78:8000/media/$cleanPath';
+    return '${AppConstants.serverUrl}/media/$cleanPath';
   }
 
   Widget _buildItemDetails() {

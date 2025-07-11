@@ -1,6 +1,7 @@
 class AppConstants {
   static const String appName = 'Delivery Customer';
-  static const String baseUrl = 'http://192.168.1.70:8000/api';
+  static const String serverUrl = 'http://192.168.1.115:8000';
+  static String baseUrl = '$serverUrl/api';
   
   // API Endpoints
   static const String loginEndpoint = '/auth/token/';
@@ -22,6 +23,8 @@ class AppConstants {
   static const String userKey = 'user_data';
   static const String cartKey = 'cart_data';
   static const String addressKey = 'saved_addresses';
+  static const String locationKey = 'user_location';
+  static const String lastLocationUpdateKey = 'last_location_update';
   
   // App Settings
   static const int requestTimeout = 30000; // 30 seconds

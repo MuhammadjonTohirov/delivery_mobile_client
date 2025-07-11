@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/models/models.dart';
-import '../../../../core/services/api_service.dart';
+import 'package:delivery_customer/core/services/api/api_service.dart';
 import '../../../../shared/widgets/cart/cart_wrapper.dart';
 import '../../../../shared/widgets/cart/cart_helpers.dart';
 import '../../../../shared/widgets/menu/menu_item_card.dart';

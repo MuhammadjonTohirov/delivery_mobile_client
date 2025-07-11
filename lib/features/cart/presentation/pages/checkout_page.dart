@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/services/api_service.dart';
+import 'package:delivery_customer/core/services/api/api_service.dart';
 import '../bloc/cart_bloc.dart';
 import '../../../orders/presentation/bloc/orders_bloc.dart';
 

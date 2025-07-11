@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/services/api_service.dart';
+import 'package:delivery_customer/core/services/api/api_service.dart';
 import '../../../../shared/widgets/states/error_state_widget.dart';
 import '../../../../shared/widgets/chips/status_chip.dart';
 import '../../../../shared/utils/formatters/date_formatter.dart';

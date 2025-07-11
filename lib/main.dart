@@ -1,3 +1,4 @@
+import 'package:delivery_customer/core/services/api/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -5,8 +6,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
-import 'core/services/api_service.dart';
-import 'core/services/logger_service.dart';
 import 'core/services/storage_service.dart';
 import 'core/services/location_service.dart';
 import 'core/blocs/language_cubit.dart';
@@ -25,6 +24,10 @@ void main() async {
   
   // Initialize services
   await StorageService.init();
+  
+  // Initialize location service
+  final locationService = LocationService();
+  await locationService.initializeLocationOnStartup();
   
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
