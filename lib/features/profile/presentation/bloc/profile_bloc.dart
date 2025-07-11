@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../core/services/logger_service.dart';
 
 // Events
 abstract class ProfileEvent extends Equatable {
@@ -170,7 +171,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   ) async {
     final currentState = state;
     if (currentState is ProfileLoaded) {
-      print('📤 Starting profile image update...');
+      LoggerService.info('Starting profile image update');
       emit(ProfileUpdating(user: currentState.user));
       
       try {
@@ -178,27 +179,27 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           imageFile: event.imageFile,
         );
         
-        print('📥 Profile image update response: success=${response.success}');
+        LoggerService.info('Profile image update response received', 'success=${response.success}');
         
         if (response.success && response.data != null) {
           final updatedUser = response.data!;
           
-          print('👤 Updated user data: ${updatedUser.toString()}');
-          print('🖼️ New avatar URL: ${updatedUser['avatar']}');
+          LoggerService.debug('Updated user data received', updatedUser.toString());
+          LoggerService.debug('New avatar URL', updatedUser['avatar']);
           
           // Save updated data to local storage
           await StorageService.setUserData(updatedUser);
           
           emit(ProfileLoaded(user: updatedUser));
-          print('✅ Profile image update completed successfully');
+          LoggerService.info('Profile image update completed successfully');
         } else {
-          print('❌ Profile image update failed: ${response.error}');
+          LoggerService.warning('Profile image update failed', response.error);
           // Revert to previous state
           emit(ProfileLoaded(user: currentState.user));
           emit(ProfileError(message: response.error ?? 'Failed to update profile image'));
         }
       } catch (e) {
-        print('💥 Profile image update exception: ${e.toString()}');
+        LoggerService.error('Profile image update exception', e);
         // Revert to previous state
         emit(ProfileLoaded(user: currentState.user));
         emit(ProfileError(message: 'Failed to update profile image: ${e.toString()}'));

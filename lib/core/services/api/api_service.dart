@@ -1,12 +1,12 @@
 import 'package:image_picker/image_picker.dart';
-import 'api/api_service_auth.dart';
-import 'api/api_service_cart.dart';
-import 'api/api_service_order.dart';
-import 'api/api_service_promotion.dart';
-import 'api/api_service_restaurant.dart';
-import 'api/api_service_review.dart';
-import 'api/api_service_search.dart';
-import 'api/base_api_service.dart';
+import 'api_service_auth.dart';
+import 'api_service_cart.dart';
+import 'api_service_order.dart';
+import 'api_service_promotion.dart';
+import 'api_service_restaurant.dart';
+import 'api_service_review.dart';
+import 'api_service_search.dart';
+import 'base_api_service.dart';
 
 /// Comprehensive API service that combines all modular API services
 /// This provides a single point of access to all API functionality

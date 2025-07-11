@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/services/logger_service.dart';
 import '../../../../shared/widgets/states/error_state_widget.dart';
 import '../../../../shared/widgets/image_picker_widget.dart';
+import '../../../../shared/widgets/images/optimized_network_image.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../bloc/profile_bloc.dart';
 
@@ -124,8 +126,8 @@ class _ProfilePageState extends State<ProfilePage> {
     final email = user['email'] ?? 'No email';
     final avatarUrl = user['avatar'] ?? user['profile_picture'];
     
-    print('🔍 Profile Header - User data: ${user.toString()}');
-    print('🖼️ Profile Header - Avatar URL: $avatarUrl');
+    LoggerService.debug('Profile header user data', user.toString());
+    LoggerService.debug('Profile header avatar URL', avatarUrl);
     
     var pickAvatarButton = Positioned(
                 right: 0,
@@ -166,29 +168,25 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 child: avatarUrl != null && avatarUrl.toString().isNotEmpty
                     ? ClipOval(
-                        child: Image.network(
-                          avatarUrl.toString(),
+                        child: OptimizedNetworkImage(
+                          imageUrl: avatarUrl.toString(),
                           width: 100,
                           height: 100,
                           fit: BoxFit.cover,
-                          filterQuality: FilterQuality.high, // Use high quality filtering
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Center(
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Theme.of(context).primaryColor,
+                          borderRadius: BorderRadius.circular(50),
+                          placeholder: Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Theme.of(context).primaryColor,
                               ),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            debugPrint('Image load error: $error');
-                            return Icon(
-                              Icons.person,
-                              size: 50,
-                              color: Theme.of(context).primaryColor,
-                            );
-                          },
+                            ),
+                          ),
+                          errorWidget: Icon(
+                            Icons.person,
+                            size: 50,
+                            color: Theme.of(context).primaryColor,
+                          ),
                         ),
                       )
                     : Icon(

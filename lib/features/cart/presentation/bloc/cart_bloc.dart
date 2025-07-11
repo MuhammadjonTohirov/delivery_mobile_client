@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../core/services/logger_service.dart';
 
 // Events
 abstract class CartEvent extends Equatable {
@@ -63,7 +65,7 @@ class CartItemQuantityUpdated extends CartEvent {
 
 class CartCleared extends CartEvent {}
 
-// States
+// States with better immutability
 abstract class CartState extends Equatable {
   const CartState();
 
@@ -77,23 +79,22 @@ class CartLoading extends CartState {}
 
 class CartLoaded extends CartState {
   final List<Map<String, dynamic>> items;
-  final double subtotal;
-  final double deliveryFee;
-  final double tax;
-  final double total;
-  final int itemCount;
+  final CartTotals totals;
 
   const CartLoaded({
     required this.items,
-    required this.subtotal,
-    required this.deliveryFee,
-    required this.tax,
-    required this.total,
-    required this.itemCount,
+    required this.totals,
   });
 
   @override
-  List<Object> get props => [items, subtotal, deliveryFee, tax, total, itemCount];
+  List<Object> get props => [items, totals];
+
+  // Helper getters for backward compatibility
+  double get subtotal => totals.subtotal;
+  double get deliveryFee => totals.deliveryFee;
+  double get tax => totals.tax;
+  double get total => totals.total;
+  int get itemCount => totals.itemCount;
 }
 
 class CartError extends CartState {
@@ -105,19 +106,53 @@ class CartError extends CartState {
   List<Object> get props => [message];
 }
 
-// Bloc
+// Immutable cart totals model
+class CartTotals extends Equatable {
+  final double subtotal;
+  final double deliveryFee;
+  final double tax;
+  final double total;
+  final int itemCount;
+
+  const CartTotals({
+    required this.subtotal,
+    required this.deliveryFee,
+    required this.tax,
+    required this.total,
+    required this.itemCount,
+  });
+
+  @override
+  List<Object> get props => [subtotal, deliveryFee, tax, total, itemCount];
+}
+
+// Optimized Bloc with performance improvements
 class CartBloc extends Bloc<CartEvent, CartState> {
   final ApiService _apiService;
+  Timer? _debounceTimer;
+  
+  // Cache calculations to avoid recomputation
+  final Map<String, CartTotals> _calculationCache = {};
 
   CartBloc({ApiService? apiService}) 
       : _apiService = apiService ?? ApiService(),
         super(CartInitial()) {
+    
+    // Add transformers for debouncing frequent events
     on<CartLoadRequested>(_onCartLoadRequested);
     on<CartItemAdded>(_onCartItemAdded);
     on<CartMenuItemAdded>(_onCartMenuItemAdded);
     on<CartItemRemoved>(_onCartItemRemoved);
-    on<CartItemQuantityUpdated>(_onCartItemQuantityUpdated);
+    on<CartItemQuantityUpdated>(
+      _onCartItemQuantityUpdated,
+      transformer: _debounceTransformer(const Duration(milliseconds: 300)),
+    );
     on<CartCleared>(_onCartCleared);
+  }
+
+  // Debounce transformer to prevent excessive API calls
+  EventTransformer<T> _debounceTransformer<T>(Duration duration) {
+    return (events, mapper) => events.debounceTime(duration).switchMap(mapper);
   }
 
   Future<void> _onCartLoadRequested(
@@ -125,78 +160,78 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     Emitter<CartState> emit,
   ) async {
     emit(CartLoading());
+    
     try {
-      // Always load from local storage first for better UX
+      // Load local data first for immediate UI update
       final localItems = StorageService.getCartData();
-      print('🛒 Cart Debug: Local storage has ${localItems.length} items');
       
-      // Try to load from server first
+      // Emit local data immediately if available
+      if (localItems.isNotEmpty) {
+        final totals = _calculateTotals(localItems);
+        emit(CartLoaded(items: localItems, totals: totals));
+      }
+      
+      // Then try to sync with server
       final response = await _apiService.getCart();
-      print('🛒 Cart Debug: Server response success: ${response.success}');
       
       if (response.success && response.data != null) {
         final cartData = response.data!;
-        final serverItems = cartData['items'] as List<dynamic>? ?? [];
-        print('🛒 Cart Debug: Server has ${serverItems.length} items');
+        final serverItems = (cartData['items'] as List<dynamic>?)
+            ?.cast<Map<String, dynamic>>() ?? [];
         
-        // If server has items, use server data
         if (serverItems.isNotEmpty) {
-          print('🛒 Cart Debug: Using server data');
-          emit(CartLoaded(
-            items: serverItems.cast<Map<String, dynamic>>(),
+          // Use server data and update local storage
+          await StorageService.setCartData(serverItems);
+          
+          final totals = CartTotals(
             subtotal: (cartData['subtotal'] ?? 0.0).toDouble(),
             deliveryFee: (cartData['delivery_fee'] ?? 0.0).toDouble(),
             tax: (cartData['tax'] ?? 0.0).toDouble(),
             total: (cartData['total'] ?? 0.0).toDouble(),
             itemCount: (cartData['item_count'] ?? 0) as int,
-          ));
-        } else {
-          // Server is empty, use local storage
-          print('🛒 Cart Debug: Server empty, using local storage');
-          final calculations = _calculateTotals(localItems);
+          );
           
-          emit(CartLoaded(
-            items: localItems,
-            subtotal: calculations['subtotal']!,
-            deliveryFee: calculations['deliveryFee']!,
-            tax: calculations['tax']!,
-            total: calculations['total']!,
-            itemCount: calculations['itemCount']!.toInt(),
+          emit(CartLoaded(items: serverItems, totals: totals));
+        } else if (localItems.isEmpty) {
+          // Both server and local are empty
+          emit(const CartLoaded(
+            items: [],
+            totals: CartTotals(
+              subtotal: 0.0,
+              deliveryFee: 0.0,
+              tax: 0.0,
+              total: 0.0,
+              itemCount: 0,
+            ),
           ));
         }
-      } else {
-        // Fallback to local storage if server fails
-        print('🛒 Cart Debug: Server failed, using local storage');
-        final calculations = _calculateTotals(localItems);
-        
-        emit(CartLoaded(
-          items: localItems,
-          subtotal: calculations['subtotal']!,
-          deliveryFee: calculations['deliveryFee']!,
-          tax: calculations['tax']!,
-          total: calculations['total']!,
-          itemCount: calculations['itemCount']!.toInt(),
+        // If server is empty but local has items, keep local data
+      } else if (localItems.isEmpty) {
+        // Server failed and no local data
+        emit(const CartLoaded(
+          items: [],
+          totals: CartTotals(
+            subtotal: 0.0,
+            deliveryFee: 0.0,
+            tax: 0.0,
+            total: 0.0,
+            itemCount: 0,
+          ),
         ));
       }
+      // If server fails but we have local data, keep current state
+      
     } catch (e) {
-      print('🛒 Cart Debug: Exception caught: $e');
+      LoggerService.error('Cart load failed', e);
+      
       // Fallback to local storage
       try {
         final items = StorageService.getCartData();
-        print('🛒 Cart Debug: Exception fallback, local has ${items.length} items');
-        final calculations = _calculateTotals(items);
-        
-        emit(CartLoaded(
-          items: items,
-          subtotal: calculations['subtotal']!,
-          deliveryFee: calculations['deliveryFee']!,
-          tax: calculations['tax']!,
-          total: calculations['total']!,
-          itemCount: calculations['itemCount']!.toInt(),
-        ));
+        final totals = _calculateTotals(items);
+        emit(CartLoaded(items: items, totals: totals));
       } catch (localError) {
-        print('🛒 Cart Debug: Local storage also failed: $localError');
-        emit(CartError(message: 'Failed to load cart: ${e.toString()}'));
+        LoggerService.error('Local cart load failed', localError);
+        emit(CartError(message: 'Failed to load cart'));
       }
     }
   }
@@ -206,9 +241,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     Emitter<CartState> emit,
   ) async {
     try {
-      print('🛒 Adding item to cart: ${event.item['name']}');
-      final items = StorageService.getCartData();
-      print('🛒 Current cart has ${items.length} items');
+      final items = List<Map<String, dynamic>>.from(StorageService.getCartData());
       
       // Check if item already exists
       final existingItemIndex = items.indexWhere(
@@ -217,33 +250,27 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       
       if (existingItemIndex != -1) {
         // Update quantity if item exists
-        print('🛒 Item exists, updating quantity');
-        items[existingItemIndex]['quantity'] = 
-            (items[existingItemIndex]['quantity'] ?? 1) + 1;
+        final currentQuantity = _parseInt(items[existingItemIndex]['quantity']);
+        items[existingItemIndex]['quantity'] = currentQuantity + 1;
       } else {
         // Add new item
-        print('🛒 Adding new item');
         final newItem = Map<String, dynamic>.from(event.item);
         newItem['quantity'] = newItem['quantity'] ?? 1;
         items.add(newItem);
       }
       
+      // Update storage
       await StorageService.setCartData(items);
-      print('🛒 Saved to storage, cart now has ${items.length} items');
       
-      final calculations = _calculateTotals(items);
-      emit(CartLoaded(
-        items: items,
-        subtotal: calculations['subtotal']!,
-        deliveryFee: calculations['deliveryFee']!,
-        tax: calculations['tax']!,
-        total: calculations['total']!,
-        itemCount: calculations['itemCount']!.toInt(),
-      ));
-      print('🛒 Emitted CartLoaded with ${items.length} items');
+      // Calculate and emit new state
+      final totals = _calculateTotals(items);
+      emit(CartLoaded(items: items, totals: totals));
+      
+      LoggerService.debug('Item added to cart', {'itemId': event.item['id'], 'totalItems': items.length});
+      
     } catch (e) {
-      print('🛒 Error adding item: $e');
-      emit(CartError(message: 'Failed to add item to cart: ${e.toString()}'));
+      LoggerService.error('Failed to add item to cart', e);
+      emit(CartError(message: 'Failed to add item to cart'));
     }
   }
 
@@ -252,7 +279,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     Emitter<CartState> emit,
   ) async {
     try {
-      emit(CartLoading());
+      // Don't emit loading for better UX - let UI handle loading state
       
       final response = await _apiService.addToCart(
         menuItemId: event.menuItemId,
@@ -262,40 +289,14 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       );
       
       if (response.success) {
-        // Reload cart after successful addition
-        final cartResponse = await _apiService.getCart();
-        
-        if (cartResponse.success && cartResponse.data != null) {
-          final cartData = cartResponse.data!;
-          final serverItems = cartData['items'] as List<dynamic>? ?? [];
-          
-          emit(CartLoaded(
-            items: serverItems.cast<Map<String, dynamic>>(),
-            subtotal: (cartData['subtotal'] ?? 0.0).toDouble(),
-            deliveryFee: (cartData['delivery_fee'] ?? 0.0).toDouble(),
-            tax: (cartData['tax'] ?? 0.0).toDouble(),
-            total: (cartData['total'] ?? 0.0).toDouble(),
-            itemCount: (cartData['item_count'] ?? 0) as int,
-          ));
-        } else {
-          // Fallback to local storage
-          final items = StorageService.getCartData();
-          final calculations = _calculateTotals(items);
-          
-          emit(CartLoaded(
-            items: items,
-            subtotal: calculations['subtotal']!,
-            deliveryFee: calculations['deliveryFee']!,
-            tax: calculations['tax']!,
-            total: calculations['total']!,
-            itemCount: calculations['itemCount']!.toInt(),
-          ));
-        }
+        // Refresh cart data from server
+        add(CartLoadRequested());
       } else {
         emit(CartError(message: response.error ?? 'Failed to add item to cart'));
       }
     } catch (e) {
-      emit(CartError(message: 'Failed to add item to cart: ${e.toString()}'));
+      LoggerService.error('Failed to add menu item to cart', e);
+      emit(CartError(message: 'Failed to add item to cart'));
     }
   }
 
@@ -304,30 +305,23 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     Emitter<CartState> emit,
   ) async {
     try {
-      final response = await _apiService.removeFromCart(event.itemId);
+      // Optimistic update - update UI immediately
+      final items = List<Map<String, dynamic>>.from(StorageService.getCartData());
+      items.removeWhere((item) => item['id'].toString() == event.itemId);
       
-      if (response.success) {
-        // Reload cart after successful removal
-        add(CartLoadRequested());
-      } else {
-        // Fallback to local storage
-        final items = StorageService.getCartData();
-        items.removeWhere((item) => item['id'].toString() == event.itemId);
-        
-        await StorageService.setCartData(items);
-        
-        final calculations = _calculateTotals(items);
-        emit(CartLoaded(
-          items: items,
-          subtotal: calculations['subtotal']!,
-          deliveryFee: calculations['deliveryFee']!,
-          tax: calculations['tax']!,
-          total: calculations['total']!,
-          itemCount: calculations['itemCount']!.toInt(),
-        ));
-      }
+      await StorageService.setCartData(items);
+      final totals = _calculateTotals(items);
+      emit(CartLoaded(items: items, totals: totals));
+      
+      // Then sync with server in background
+      _apiService.removeFromCart(event.itemId).catchError((error) {
+        LoggerService.error('Failed to remove item from server', error);
+        // Could add retry logic here
+      });
+      
     } catch (e) {
-      emit(CartError(message: 'Failed to remove item from cart: ${e.toString()}'));
+      LoggerService.error('Failed to remove item from cart', e);
+      emit(CartError(message: 'Failed to remove item from cart'));
     }
   }
 
@@ -337,44 +331,34 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   ) async {
     try {
       if (event.quantity <= 0) {
-        // Remove item if quantity is 0 or less
         add(CartItemRemoved(itemId: event.itemId));
         return;
       }
       
-      final response = await _apiService.updateCartItem(
-        cartItemId: event.itemId,
-        quantity: event.quantity,
+      // Optimistic update
+      final items = List<Map<String, dynamic>>.from(StorageService.getCartData());
+      final itemIndex = items.indexWhere(
+        (item) => item['id'].toString() == event.itemId,
       );
       
-      if (response.success) {
-        // Reload cart after successful update
-        add(CartLoadRequested());
-      } else {
-        // Fallback to local storage
-        final items = StorageService.getCartData();
-        final itemIndex = items.indexWhere(
-          (item) => item['id'].toString() == event.itemId,
-        );
+      if (itemIndex != -1) {
+        items[itemIndex]['quantity'] = event.quantity;
         
-        if (itemIndex != -1) {
-          items[itemIndex]['quantity'] = event.quantity;
-          
-          await StorageService.setCartData(items);
-          
-          final calculations = _calculateTotals(items);
-          emit(CartLoaded(
-            items: items,
-            subtotal: calculations['subtotal']!,
-            deliveryFee: calculations['deliveryFee']!,
-            tax: calculations['tax']!,
-            total: calculations['total']!,
-            itemCount: calculations['itemCount']!.toInt(),
-          ));
-        }
+        await StorageService.setCartData(items);
+        final totals = _calculateTotals(items);
+        emit(CartLoaded(items: items, totals: totals));
+        
+        // Sync with server in background
+        _apiService.updateCartItem(
+          cartItemId: event.itemId,
+          quantity: event.quantity,
+        ).catchError((error) {
+          LoggerService.error('Failed to update item quantity on server', error);
+        });
       }
     } catch (e) {
-      emit(CartError(message: 'Failed to update item quantity: ${e.toString()}'));
+      LoggerService.error('Failed to update item quantity', e);
+      emit(CartError(message: 'Failed to update item quantity'));
     }
   }
 
@@ -383,76 +367,120 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     Emitter<CartState> emit,
   ) async {
     try {
-      final response = await _apiService.clearCart();
+      // Clear local storage immediately
+      await StorageService.clearCartData();
       
-      if (response.success) {
-        emit(const CartLoaded(
-          items: [],
+      emit(const CartLoaded(
+        items: [],
+        totals: CartTotals(
           subtotal: 0.0,
           deliveryFee: 0.0,
           tax: 0.0,
           total: 0.0,
           itemCount: 0,
-        ));
-      } else {
-        // Fallback to local storage
-        await StorageService.clearCartData();
-        emit(const CartLoaded(
-          items: [],
-          subtotal: 0.0,
-          deliveryFee: 0.0,
-          tax: 0.0,
-          total: 0.0,
-          itemCount: 0,
-        ));
-      }
+        ),
+      ));
+      
+      // Clear server cart in background
+      _apiService.clearCart().catchError((error) {
+        LoggerService.error('Failed to clear cart on server', error);
+      });
+      
     } catch (e) {
-      emit(CartError(message: 'Failed to clear cart: ${e.toString()}'));
+      LoggerService.error('Failed to clear cart', e);
+      emit(CartError(message: 'Failed to clear cart'));
     }
   }
 
-  Map<String, double> _calculateTotals(List<Map<String, dynamic>> items) {
+  // Optimized calculation with caching
+  CartTotals _calculateTotals(List<Map<String, dynamic>> items) {
+    // Create cache key based on items
+    final cacheKey = items.map((item) => 
+      '${item['id']}_${item['quantity']}_${item['price']}'
+    ).join('|');
+    
+    // Return cached result if available
+    if (_calculationCache.containsKey(cacheKey)) {
+      return _calculationCache[cacheKey]!;
+    }
+    
     double subtotal = 0.0;
     int itemCount = 0;
     
     for (final item in items) {
-      // Handle both string and double price values
-      final priceValue = item['price'];
-      double price = 0.0;
-      
-      if (priceValue is double) {
-        price = priceValue;
-      } else if (priceValue is int) {
-        price = priceValue.toDouble();
-      } else if (priceValue is String) {
-        price = double.tryParse(priceValue) ?? 0.0;
-      }
-      
-      final quantityValue = item['quantity'];
-      int quantity = 1;
-      
-      if (quantityValue is int) {
-        quantity = quantityValue;
-      } else if (quantityValue is double) {
-        quantity = quantityValue.toInt();
-      } else if (quantityValue is String) {
-        quantity = int.tryParse(quantityValue) ?? 1;
-      }
+      final price = _parseDouble(item['price']);
+      final quantity = _parseInt(item['quantity']);
       
       subtotal += price * quantity;
       itemCount += quantity;
     }
     
-    final deliveryFee = subtotal > 0 ? 2.99 : 0.0; // Free delivery over certain amount
-    final tax = subtotal * 0.08; // 8% tax
+    final deliveryFee = subtotal > 0 ? 2.99 : 0.0;
+    final tax = subtotal * 0.08;
     final total = subtotal + deliveryFee + tax;
     
-    return {
-      'subtotal': subtotal,
-      'deliveryFee': deliveryFee,
-      'tax': tax,
-      'total': total,
-      'itemCount': itemCount.toDouble(),
-    };
+    final totals = CartTotals(
+      subtotal: subtotal,
+      deliveryFee: deliveryFee,
+      tax: tax,
+      total: total,
+      itemCount: itemCount,
+    );
+    
+    // Cache with size limit
+    if (_calculationCache.length > 50) {
+      _calculationCache.clear();
+    }
+    _calculationCache[cacheKey] = totals;
+    
+    return totals;
+  }
+
+  // Optimized parsing methods
+  double _parseDouble(dynamic value) {
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  int _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 1;
+    return 1;
+  }
+
+  @override
+  Future<void> close() {
+    _debounceTimer?.cancel();
+    _calculationCache.clear();
+    return super.close();
+  }
+}
+
+// Extension for debouncing (if not available in your current bloc version)
+extension StreamExtensions<T> on Stream<T> {
+  Stream<T> debounceTime(Duration duration) {
+    Timer? timer;
+    T? lastData;
+    
+    return transform(StreamTransformer.fromHandlers(
+      handleData: (data, sink) {
+        lastData = data;
+        timer?.cancel();
+        timer = Timer(duration, () {
+          sink.add(lastData!);
+        });
+      },
+      handleDone: (sink) {
+        timer?.cancel();
+        sink.close();
+      },
+    ));
+  }
+  
+  Stream<S> switchMap<S>(Stream<S> Function(T) mapper) {
+    return asyncExpand(mapper);
   }
 }
