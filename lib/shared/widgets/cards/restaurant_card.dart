@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import '../../utils/formatters/currency_formatter.dart';
+import '../images/optimized_network_image.dart';
 
 enum RestaurantCardLayout {
   featured,  // Horizontal card for featured section
@@ -15,25 +16,42 @@ class RestaurantCard extends StatelessWidget {
   final bool showDeliveryInfo;
   final bool showPromotions;
 
-  const RestaurantCard({
+  // Pre-computed values for performance
+  late final String _name;
+  late final String _cuisineTypes;
+  late final double _rating;
+  late final String _deliveryTime;
+  late final String? _imageUrl;
+  late final String? _promotionText;
+  late final bool _hasPromotion;
+
+  RestaurantCard({
     super.key,
     required this.restaurant,
     this.layout = RestaurantCardLayout.list,
     this.onTap,
     this.showDeliveryInfo = true,
     this.showPromotions = true,
-  });
+  }) {
+    // Pre-compute all values to avoid repeated computations in build method
+    _name = restaurant['name']?.toString() ?? 'Unknown Restaurant';
+    _cuisineTypes = _buildCuisineTypesString();
+    _rating = _getDouble(restaurant['rating']) ?? 4.0;
+    _deliveryTime = restaurant['delivery_time']?.toString() ?? '30-45 min';
+    _imageUrl = _getImageUrl();
+    _promotionText = restaurant['promotion']?.toString();
+    _hasPromotion = _promotionText != null && _promotionText!.isNotEmpty;
+  }
 
   @override
   Widget build(BuildContext context) {
-    switch (layout) {
-      case RestaurantCardLayout.featured:
-        return _buildFeaturedCard(context);
-      case RestaurantCardLayout.list:
-        return _buildListCard(context);
-      case RestaurantCardLayout.grid:
-        return _buildGridCard(context);
-    }
+    return RepaintBoundary( // Isolate repaints for better performance
+      child: switch (layout) {
+        RestaurantCardLayout.featured => _buildFeaturedCard(context),
+        RestaurantCardLayout.list => _buildListCard(context),
+        RestaurantCardLayout.grid => _buildGridCard(context),
+      },
+    );
   }
 
   Widget _buildFeaturedCard(BuildContext context) {
@@ -49,7 +67,7 @@ class RestaurantCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withAlpha(25), // Use withAlpha instead of withOpacity
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -58,7 +76,7 @@ class RestaurantCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildImageContainer(context, height: 140),
+            _buildOptimizedImage(context, height: 140),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(12),
@@ -70,7 +88,7 @@ class RestaurantCard extends StatelessWidget {
                     _buildCuisineTypes(context),
                     const SizedBox(height: 8),
                     _buildRatingAndDeliveryTime(context),
-                    if (showPromotions) ...[
+                    if (showPromotions && _hasPromotion) ...[
                       const SizedBox(height: 8),
                       _buildPromotionBadge(context),
                     ],
@@ -96,7 +114,7 @@ class RestaurantCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withAlpha(20), // Use withAlpha
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -105,7 +123,7 @@ class RestaurantCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildImageContainer(context, height: 180),
+            _buildOptimizedImage(context, height: 160),
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -113,14 +131,21 @@ class RestaurantCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: _buildRestaurantName(context)),
-                      if (showPromotions) _buildPromotionBadge(context),
+                      Expanded(
+                        child: _buildRestaurantName(context, maxLines: 2),
+                      ),
+                      if (showPromotions && _hasPromotion)
+                        _buildPromotionBadge(context),
                     ],
                   ),
                   const SizedBox(height: 4),
                   _buildCuisineTypes(context),
                   const SizedBox(height: 12),
-                  _buildRestaurantInfo(context),
+                  _buildRatingAndDeliveryTime(context),
+                  if (showDeliveryInfo) ...[
+                    const SizedBox(height: 8),
+                    _buildDeliveryInfo(context),
+                  ],
                 ],
               ),
             ),
@@ -141,8 +166,8 @@ class RestaurantCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 4,
+              color: Colors.black.withAlpha(20), // Use withAlpha
+              blurRadius: 6,
               offset: const Offset(0, 2),
             ),
           ],
@@ -150,18 +175,22 @@ class RestaurantCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildImageContainer(context, height: 120),
             Expanded(
+              flex: 3,
+              child: _buildOptimizedImage(context),
+            ),
+            Expanded(
+              flex: 2,
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildRestaurantName(context, maxLines: 2),
+                    _buildRestaurantName(context, maxLines: 1),
                     const SizedBox(height: 4),
-                    _buildCuisineTypes(context, maxLines: 1),
+                    _buildCuisineTypes(context),
                     const Spacer(),
-                    _buildRatingAndDeliveryTime(context, compact: true),
+                    _buildRatingAndDeliveryTime(context),
                   ],
                 ),
               ),
@@ -172,222 +201,183 @@ class RestaurantCard extends StatelessWidget {
     );
   }
 
-  Widget _buildImageContainer(BuildContext context, {required double height}) {
-    // Check different possible image field names from server
-    final imageUrl = restaurant['image'] ?? 
-                    restaurant['image_url'] ?? 
-                    restaurant['banner'] ?? 
-                    restaurant['logo'] ??
-                    restaurant['photo'];
-    
-    return Container(
-      height: height,
+  Widget _buildOptimizedImage(BuildContext context, {double? height}) {
+    return OptimizedNetworkImage(
+      imageUrl: _imageUrl,
       width: double.infinity,
-      decoration: const BoxDecoration(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      height: height,
+      fit: BoxFit.cover,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+      placeholder: Container(
+        height: height,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
       ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-        child: imageUrl != null && imageUrl.toString().isNotEmpty
-            ? Image.network(
-                _buildImageUrl(imageUrl.toString()),
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return _buildImagePlaceholder(context);
-                },
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  );
-                },
-              )
-            : _buildImagePlaceholder(context),
-      ),
-    );
-  }
-
-  String _buildImageUrl(String imagePath) {
-    // If it's already a full URL, return as is
-    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      return imagePath;
-    }
-    
-    // If it's a relative path, build the full URL with server base URL
-    // Remove leading slash if present
-    final cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
-    
-    // Get base URL from constants (remove /api part for media files)
-    const baseUrl = 'http://192.168.1.78:8000'; // Could be extracted from AppConstants
-    
-    return '$baseUrl/media/$cleanPath';
-  }
-
-  Widget _buildImagePlaceholder(BuildContext context) {
-    return Container(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: Center(
+      errorWidget: Container(
+        height: height,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+        ),
         child: Icon(
           Icons.restaurant,
-          size: 48,
+          size: 32,
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       ),
     );
   }
 
-  Widget _buildRestaurantName(BuildContext context, {int? maxLines}) {
+  Widget _buildRestaurantName(BuildContext context, {int maxLines = 2}) {
     return Text(
-      restaurant['name'] ?? 'Restaurant',
+      _name,
       style: Theme.of(context).textTheme.titleMedium?.copyWith(
         fontWeight: FontWeight.w600,
       ),
-      maxLines: maxLines ?? 2,
+      maxLines: maxLines,
       overflow: TextOverflow.ellipsis,
     );
   }
 
-  Widget _buildCuisineTypes(BuildContext context, {int? maxLines}) {
-    final cuisines = restaurant['cuisine_types'] ?? restaurant['cuisines'];
-    final cuisineText = cuisines is List 
-        ? cuisines.join(' • ')
-        : (cuisines?.toString() ?? 'Various cuisines');
-    
+  Widget _buildCuisineTypes(BuildContext context) {
     return Text(
-      cuisineText,
+      _cuisineTypes,
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
         color: Theme.of(context).colorScheme.onSurfaceVariant,
       ),
-      maxLines: maxLines ?? 2,
+      maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
   }
 
-  Widget _buildRatingAndDeliveryTime(BuildContext context, {bool compact = false}) {
-    final rating = _getDouble(restaurant['rating']) ?? 4.0;
-    final deliveryTime = restaurant['delivery_time'] ?? restaurant['estimated_delivery_time'] ?? '30-45';
+  Widget _buildRatingAndDeliveryTime(BuildContext context) {
+    final theme = Theme.of(context);
     
-    if (compact) {
-      return Row(
-        children: [
-          Icon(Icons.star, size: 16, color: Colors.amber.shade600),
-          const SizedBox(width: 4),
-          Text(
-            rating.toStringAsFixed(1),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Icon(Icons.access_time, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
-          const SizedBox(width: 2),
-          Text(
-            '$deliveryTime min',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      );
-    }
-
     return Row(
       children: [
+        // Rating
         RatingBarIndicator(
-          rating: rating,
-          itemBuilder: (context, index) => Icon(
+          rating: _rating,
+          itemBuilder: (context, _) => Icon(
             Icons.star,
-            color: Colors.amber.shade600,
+            color: theme.colorScheme.tertiary,
           ),
           itemCount: 5,
           itemSize: 16,
+          unratedColor: theme.colorScheme.outline.withAlpha(80),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
         Text(
-          rating.toStringAsFixed(1),
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          _rating.toStringAsFixed(1),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(width: 16),
+        // Delivery time
         Icon(
           Icons.access_time,
           size: 16,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          color: theme.colorScheme.onSurfaceVariant,
         ),
         const SizedBox(width: 4),
         Text(
-          '$deliveryTime min',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          _deliveryTime,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildRestaurantInfo(BuildContext context) {
-    final deliveryFee = _getDouble(restaurant['delivery_fee']) ?? 0.0;
-    final minimumOrder = _getDouble(restaurant['minimum_order']);
-    
-    return Row(
-      children: [
-        _buildRatingAndDeliveryTime(context),
-        const Spacer(),
-        if (showDeliveryInfo) ...[
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                deliveryFee > 0 
-                    ? CurrencyFormatter.formatUSD(deliveryFee)
-                    : 'Free delivery',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: deliveryFee > 0 
-                      ? Theme.of(context).colorScheme.onSurface
-                      : Colors.green.shade600,
-                ),
-              ),
-              if (minimumOrder != null)
-                Text(
-                  'Min: ${CurrencyFormatter.formatUSD(minimumOrder)}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-            ],
-          ),
-        ],
       ],
     );
   }
 
   Widget _buildPromotionBadge(BuildContext context) {
-    final hasPromotion = restaurant['has_promotion'] ?? false;
-    final promotionText = restaurant['promotion_text'] ?? 'Special Offer';
+    if (!_hasPromotion) return const SizedBox.shrink();
     
-    if (!hasPromotion) return const SizedBox.shrink();
+    final theme = Theme.of(context);
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.red.shade50,
+        color: theme.colorScheme.errorContainer,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.shade200),
       ),
       child: Text(
-        promotionText,
-        style: TextStyle(
-          color: Colors.red.shade700,
-          fontSize: 12,
+        _promotionText!,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onErrorContainer,
           fontWeight: FontWeight.w600,
         ),
       ),
     );
+  }
+
+  Widget _buildDeliveryInfo(BuildContext context) {
+    final theme = Theme.of(context);
+    final deliveryFee = restaurant['delivery_fee'];
+    final minOrder = restaurant['min_order'];
+    
+    return Row(
+      children: [
+        if (deliveryFee != null) ...[
+          Icon(
+            Icons.delivery_dining,
+            size: 16,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            deliveryFee == 0 ? 'Free delivery' : CurrencyFormatter.formatUSD(deliveryFee),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          if (minOrder != null) ...[
+            const SizedBox(width: 16),
+            Text(
+              'Min ${CurrencyFormatter.formatUSD(minOrder)}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+
+  // Helper methods (pre-computed for performance)
+  String _buildCuisineTypesString() {
+    final cuisines = restaurant['cuisine_types'];
+    if (cuisines is List && cuisines.isNotEmpty) {
+      return cuisines.take(2).join(' • ');
+    }
+    return restaurant['cuisine']?.toString() ?? 'Restaurant';
+  }
+
+  String? _getImageUrl() {
+    final imageFields = ['image', 'image_url', 'banner', 'logo', 'photo'];
+    
+    for (final field in imageFields) {
+      final value = restaurant[field];
+      if (value != null && value.toString().isNotEmpty) {
+        return value.toString();
+      }
+    }
+    
+    return null;
   }
 
   double? _getDouble(dynamic value) {

@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../core/services/logger_service.dart';
 import '../../../../shared/widgets/cart/cart_wrapper.dart';
 import '../../../../shared/widgets/cart/cart_helpers.dart';
 import '../../../../shared/utils/formatters/currency_formatter.dart';
@@ -67,7 +68,7 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> {
       }
       
     } catch (e) {
-      print('Error loading restaurant data: $e');
+      LoggerService.error('Error loading restaurant data', e);
     } finally {
       setState(() => _isLoading = false);
     }

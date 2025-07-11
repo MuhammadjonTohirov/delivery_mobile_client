@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import '../constants/app_constants.dart';
+import '../logger_service.dart';
 import 'base_api_service.dart';
 
 class AuthApiService extends BaseApiService {
@@ -94,11 +95,8 @@ class AuthApiService extends BaseApiService {
     try {
       final fileName = imageFile.name.isNotEmpty ? imageFile.name : 'profile_image.jpg';
       
-      if (kDebugMode) {
-        print('Uploading profile image: ${imageFile.path}');
-        print('File name: $fileName');
-        print('File size: ${await imageFile.length()} bytes');
-      }
+      LoggerService.info('Uploading profile image', imageFile.path);
+      LoggerService.debug('Upload file details', 'name: $fileName, size: ${await imageFile.length()} bytes');
       
       final formData = FormData.fromMap({
         'avatar': await MultipartFile.fromFile(
@@ -115,17 +113,12 @@ class AuthApiService extends BaseApiService {
         ),
       );
       
-      if (kDebugMode) {
-        print('Profile image upload response: ${response.data}');
-      }
+      LoggerService.info('Profile image upload completed successfully');
       
       return ApiResponse.success(response.data);
     } on DioException catch (e) {
-      if (kDebugMode) {
-        print('Profile image upload error: ${e.message}');
-        print('Response data: ${e.response?.data}');
-        print('Status code: ${e.response?.statusCode}');
-      }
+      LoggerService.error('Profile image upload failed', e);
+      LoggerService.debug('Upload error details', 'status: ${e.response?.statusCode}, data: ${e.response?.data}');
       return ApiResponse.error(handleError(e));
     }
   }

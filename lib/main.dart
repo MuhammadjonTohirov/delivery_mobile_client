@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/services/api_service.dart';
+import 'core/services/logger_service.dart';
 import 'core/services/storage_service.dart';
 import 'core/services/location_service.dart';
 import 'core/blocs/language_cubit.dart';
