@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import '../constants/app_constants.dart';
+import 'package:delivery_customer/core/constants/app_constants.dart';
 import 'base_api_service.dart';
 
 class OrderApiService extends BaseApiService {

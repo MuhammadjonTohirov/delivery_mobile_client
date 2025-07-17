@@ -1,5 +1,5 @@
 import 'package:geolocator/geolocator.dart';
-import '../constants/app_constants.dart';
+import 'package:delivery_customer/core/constants/app_constants.dart';
 
 class LocationService {
   static const LocationSettings _locationSettings = LocationSettings(
